@@ -3,10 +3,11 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 class SecureStorageService {
   final _storage = const FlutterSecureStorage();
 
-  static const String _accessTokenKey = 'google_oauth_access_token';
-  static const String _refreshTokenKey = 'google_oauth_refresh_token';
-  static const String _expiryKey = 'google_oauth_expiry';
+  static const String _accessTokenKey = 'google_access_token';
+  static const String _refreshTokenKey = 'google_refresh_token';
+  static const String _expiryKey = 'google_expiry';
   static const String _geminiApiKey = 'gemini_api_key';
+  static const String _geminiModel = 'gemini_model';
 
   Future<void> saveAccessToken(String token) async {
     await _storage.write(key: _accessTokenKey, value: token);
@@ -42,10 +43,19 @@ class SecureStorageService {
     return await _storage.read(key: _geminiApiKey);
   }
 
+  Future<void> saveGeminiModel(String model) async {
+    await _storage.write(key: _geminiModel, value: model);
+  }
+
+  Future<String?> getGeminiModel() async {
+    return await _storage.read(key: _geminiModel);
+  }
+
   Future<void> clearAll() async {
     await _storage.delete(key: _accessTokenKey);
     await _storage.delete(key: _refreshTokenKey);
     await _storage.delete(key: _expiryKey);
     await _storage.delete(key: _geminiApiKey);
+    await _storage.delete(key: _geminiModel);
   }
 }

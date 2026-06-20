@@ -1,67 +1,151 @@
 import 'dart:async';
+import 'dart:io';
+import 'package:googleapis_auth/auth_io.dart';
+import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
 import 'package:deadlinehub/core/services/secure_storage_service.dart';
 import 'package:deadlinehub/features/auth/domain/repositories/auth_repository.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   final SecureStorageService _secureStorage;
   final _authStreamController = StreamController<bool>.broadcast();
-  
-  bool _isAuthenticated = false;
-  String? _accessToken;
+  AuthClient? _cachedClient;
 
   AuthRepositoryImpl(this._secureStorage) {
     _init();
   }
 
+  String get _googleClientId {
+    return Platform.environment['GOOGLE_CLIENT_ID'] ?? const String.fromEnvironment('GOOGLE_CLIENT_ID');
+  }
+
+  String get _googleClientSecret {
+    return Platform.environment['GOOGLE_CLIENT_SECRET'] ?? const String.fromEnvironment('GOOGLE_CLIENT_SECRET');
+  }
+
   Future<void> _init() async {
-    final token = await _secureStorage.getAccessToken();
-    final expiry = await _secureStorage.getExpiry();
-    
-    if (token != null && expiry != null && expiry.isAfter(DateTime.now())) {
-      _accessToken = token;
-      _isAuthenticated = true;
+    final client = await getAuthClient();
+    if (client != null) {
       _authStreamController.add(true);
     } else {
-      _isAuthenticated = false;
       _authStreamController.add(false);
     }
   }
 
   @override
   Future<bool> signIn() async {
-    // Under a production environment, this integrates with google_sign_in
-    // or initiates an OAuth loopback flow.
-    // For local evaluation, we simulate successful sign-in with dummy token.
-    _accessToken = "mock_google_oauth_access_token_12345";
-    _isAuthenticated = true;
-    
-    await _secureStorage.saveAccessToken(_accessToken!);
-    await _secureStorage.saveRefreshToken("mock_google_oauth_refresh_token_abcde");
-    await _secureStorage.saveExpiry(DateTime.now().add(const Duration(hours: 24)));
-    
-    _authStreamController.add(true);
-    return true;
+    final clientId = _googleClientId.trim();
+    final clientSecret = _googleClientSecret.trim();
+
+    if (clientId.isEmpty || clientSecret.isEmpty) {
+      throw Exception(
+        'Developer Error: Developer credentials GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are not configured in the host environment.'
+      );
+    }
+
+    final scopes = [
+      'https://www.googleapis.com/auth/calendar',
+      'https://www.googleapis.com/auth/drive.readonly',
+      'https://www.googleapis.com/auth/gmail.readonly',
+      'https://www.googleapis.com/auth/classroom.courses.readonly',
+      'https://www.googleapis.com/auth/classroom.coursework.me.readonly',
+      'openid',
+      'email',
+      'profile'
+    ];
+
+    try {
+      final googleClientId = ClientId(clientId, clientSecret);
+      
+      final client = await clientViaUserConsent(googleClientId, scopes, (url) async {
+        final uri = Uri.parse(url);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri);
+        } else {
+          throw Exception('Could not launch browser consent page: $url');
+        }
+      });
+
+      _cachedClient = client;
+
+      // Save credentials in Secure Storage
+      await _secureStorage.saveAccessToken(client.credentials.accessToken.data);
+      if (client.credentials.refreshToken != null) {
+        await _secureStorage.saveRefreshToken(client.credentials.refreshToken!);
+      }
+      await _secureStorage.saveExpiry(client.credentials.accessToken.expiry);
+
+      client.credentialUpdates.listen((creds) async {
+        await _secureStorage.saveAccessToken(creds.accessToken.data);
+        await _secureStorage.saveExpiry(creds.accessToken.expiry);
+      });
+
+      _authStreamController.add(true);
+      return true;
+    } catch (e) {
+      _authStreamController.add(false);
+      rethrow;
+    }
   }
 
   @override
   Future<void> signOut() async {
-    _accessToken = null;
-    _isAuthenticated = false;
+    _cachedClient?.close();
+    _cachedClient = null;
     await _secureStorage.clearAll();
     _authStreamController.add(false);
   }
 
   @override
   Future<String?> getAccessToken() async {
-    if (_accessToken != null) return _accessToken;
-    return await _secureStorage.getAccessToken();
+    final client = await getAuthClient();
+    return client?.credentials.accessToken.data;
   }
 
   @override
   Future<bool> isAuthenticated() async {
-    return _isAuthenticated;
+    final client = await getAuthClient();
+    return client != null;
   }
 
   @override
   Stream<bool> get authStateChanges => _authStreamController.stream;
+
+  @override
+  Future<AuthClient?> getAuthClient() async {
+    if (_cachedClient != null) return _cachedClient;
+
+    final clientIdStr = _googleClientId.trim();
+    final clientSecretStr = _googleClientSecret.trim();
+    final accessTokenStr = await _secureStorage.getAccessToken();
+    final refreshTokenStr = await _secureStorage.getRefreshToken();
+    final expiry = await _secureStorage.getExpiry();
+
+    if (clientIdStr.isEmpty || clientSecretStr.isEmpty || accessTokenStr == null || refreshTokenStr == null || expiry == null) {
+      return null;
+    }
+
+    final clientId = ClientId(clientIdStr, clientSecretStr);
+    final credentials = AccessCredentials(
+      AccessToken('Bearer', accessTokenStr, expiry),
+      refreshTokenStr,
+      [
+        'https://www.googleapis.com/auth/calendar',
+        'https://www.googleapis.com/auth/drive.readonly',
+        'https://www.googleapis.com/auth/gmail.readonly',
+        'https://www.googleapis.com/auth/classroom.courses.readonly',
+        'https://www.googleapis.com/auth/classroom.coursework.me.readonly',
+      ],
+    );
+
+    final client = autoRefreshingClient(clientId, credentials, http.Client());
+    
+    client.credentialUpdates.listen((creds) async {
+      await _secureStorage.saveAccessToken(creds.accessToken.data);
+      await _secureStorage.saveExpiry(creds.accessToken.expiry);
+    });
+
+    _cachedClient = client;
+    return client;
+  }
 }

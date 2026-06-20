@@ -1,7 +1,10 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 import 'package:deadlinehub/core/theme/theme.dart';
 import 'package:deadlinehub/core/providers/providers.dart';
+import 'package:deadlinehub/presentation/pages/auth_gate.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -14,6 +17,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   final TextEditingController _apiKeyController = TextEditingController();
   bool _obscureText = true;
   bool _isAuthenticated = false;
+  
+  List<String> _availableModels = [];
+  String? _selectedModel;
+  bool _loadingModels = false;
 
   @override
   void initState() {
@@ -22,23 +29,98 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   Future<void> _loadSettings() async {
-    final key = await ref.read(secureStorageProvider).getGeminiApiKey();
+    final storage = ref.read(secureStorageProvider);
+    final key = await storage.getGeminiApiKey();
+    final model = await storage.getGeminiModel();
+    final auth = await ref.read(authRepositoryProvider).isAuthenticated();
+    
     if (key != null) {
       _apiKeyController.text = key;
     }
-    final auth = await ref.read(authRepositoryProvider).isAuthenticated();
+    
     setState(() {
       _isAuthenticated = auth;
+      _selectedModel = model;
     });
+
+    if (key != null && key.isNotEmpty) {
+      _fetchModels(key);
+    }
+  }
+
+  Future<void> _fetchModels(String apiKey) async {
+    setState(() => _loadingModels = true);
+    try {
+      final response = await http.get(Uri.parse('https://generativelanguage.googleapis.com/v1beta/models?key=$apiKey'));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final List<dynamic> modelsJson = data['models'] ?? [];
+        final List<String> textModels = [];
+        for (final m in modelsJson) {
+          final name = m['name'] as String? ?? '';
+          final methods = m['supportedGenerationMethods'] as List<dynamic>? ?? [];
+          
+          if (methods.contains('generateContent') && 
+              (name.contains('gemini') || name.contains('gemma')) &&
+              !name.contains('tts') && 
+              !name.contains('image')) {
+            textModels.add(name);
+          }
+        }
+        setState(() {
+          _availableModels = textModels;
+          if (_selectedModel == null && textModels.isNotEmpty) {
+            _selectedModel = _findBestModel(textModels);
+          }
+        });
+      }
+    } catch (_) {}
+    setState(() => _loadingModels = false);
+  }
+
+  String _findBestModel(List<String> models) {
+    for (final name in ['models/gemini-2.0-flash', 'models/gemini-2.5-flash', 'models/gemini-1.5-flash']) {
+      if (models.contains(name)) return name;
+    }
+    for (final name in ['gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-1.5-flash']) {
+      if (models.contains(name)) return name;
+    }
+    final flash = models.firstWhere((m) => m.toLowerCase().contains('flash'), orElse: () => '');
+    if (flash.isNotEmpty) return flash;
+    return models.first;
   }
 
   Future<void> _saveKey() async {
     final key = _apiKeyController.text.trim();
-    await ref.read(secureStorageProvider).saveGeminiApiKey(key);
-    if (mounted) {
+    if (key.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gemini API Key saved securely!')),
+        const SnackBar(content: Text('Gemini API Key cannot be empty.')),
       );
+      return;
+    }
+    
+    // Save and validate immediately
+    await ref.read(secureStorageProvider).saveGeminiApiKey(key);
+    await ref.read(authGateProvider.notifier).checkValidity();
+    
+    final state = ref.read(authGateProvider);
+    if (state.isGeminiKeyValid) {
+      await _fetchModels(key);
+      if (_selectedModel != null) {
+        await ref.read(secureStorageProvider).saveGeminiModel(_selectedModel!);
+        await ref.read(authGateProvider.notifier).selectModel(_selectedModel!);
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Gemini API Key saved and validated successfully!')),
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Invalid Gemini API Key. Key verification failed.')),
+        );
+      }
     }
   }
 
@@ -46,13 +128,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final repo = ref.read(authRepositoryProvider);
     if (_isAuthenticated) {
       await repo.signOut();
-    } else {
-      await repo.signIn();
     }
-    final status = await repo.isAuthenticated();
-    setState(() {
-      _isAuthenticated = status;
-    });
+    ref.read(authGateProvider.notifier).reset();
   }
 
   @override
@@ -138,7 +215,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     const SizedBox(height: 12),
                     const Text(
                       'DeadlineAI uses the Gemini model for smart scheduling and email extraction. '
-                      'Enter your personal API Key (obtained from Google AI Studio). If left empty, a robust local agent simulation will be used.',
+                      'Enter your personal API Key (obtained from Google AI Studio). A valid API Key is required to run the application.',
                       style: TextStyle(color: OneDarkTheme.textMain, fontSize: 12, height: 1.45),
                     ),
                     const SizedBox(height: 16),
@@ -160,6 +237,48 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         ),
                       ),
                     ),
+                    
+                    if (_loadingModels) ...[
+                      const SizedBox(height: 16),
+                      const Center(
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: OneDarkTheme.cyan),
+                        ),
+                      ),
+                    ] else if (_availableModels.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<String>(
+                        value: _selectedModel,
+                        dropdownColor: OneDarkTheme.surface,
+                        style: const TextStyle(color: OneDarkTheme.textLight, fontSize: 13),
+                        decoration: const InputDecoration(
+                          labelText: 'Active Text Model',
+                          contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        ),
+                        items: _availableModels.map((model) {
+                          final displayName = model.replaceFirst('models/', '');
+                          return DropdownMenuItem<String>(
+                            value: model,
+                            child: Text(displayName),
+                          );
+                        }).toList(),
+                        onChanged: (val) async {
+                          if (val != null) {
+                            setState(() => _selectedModel = val);
+                            await ref.read(secureStorageProvider).saveGeminiModel(val);
+                            await ref.read(authGateProvider.notifier).selectModel(val);
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Active model switched to ${val.replaceFirst('models/', '')}')),
+                              );
+                            }
+                          }
+                        },
+                      ),
+                    ],
+                    
                     const SizedBox(height: 16),
                     Align(
                       alignment: Alignment.centerRight,
@@ -195,6 +314,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 await ref.read(aiRepositoryProvider).clearHistory();
                 setState(() {
                   _apiKeyController.clear();
+                  _availableModels.clear();
+                  _selectedModel = null;
                   _isAuthenticated = false;
                 });
                 if (mounted) {

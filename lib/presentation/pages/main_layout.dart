@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:deadlinehub/core/theme/theme.dart';
 import 'package:deadlinehub/core/providers/providers.dart';
+import 'package:deadlinehub/presentation/providers/integration_status_provider.dart';
+import 'package:deadlinehub/presentation/pages/auth_gate.dart';
 
 class MainLayout extends ConsumerStatefulWidget {
   final Widget child;
@@ -152,6 +154,9 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
                     ],
                   ),
                 ),
+                const Divider(),
+                // Integration Status Center
+                const _IntegrationStatusCenter(),
                 // Bottom Profile info
                 const Divider(),
                 Padding(
@@ -456,5 +461,209 @@ class _QuickStatCard extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _IntegrationStatusCenter extends ConsumerWidget {
+  const _IntegrationStatusCenter();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final status = ref.watch(integrationStatusProvider);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          child: Text(
+            'INTEGRATION STATUS',
+            style: TextStyle(
+              color: OneDarkTheme.textDark,
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.2,
+            ),
+          ),
+        ),
+        _StatusTile(
+          label: 'Google Connected',
+          failedLabel: 'Google Auth Failed',
+          state: status.google,
+          error: status.googleError,
+          onTap: () {
+            ref.read(authGateProvider.notifier).reset();
+          },
+        ),
+        _StatusTile(
+          label: 'Gemini Connected',
+          failedLabel: 'Gemini Key Invalid',
+          state: status.gemini,
+          error: status.geminiError,
+          onTap: () {
+            ref.read(authGateProvider.notifier).reset();
+          },
+        ),
+        _StatusTile(
+          label: 'Calendar Synced',
+          failedLabel: 'Calendar Sync Failed',
+          permissionLabel: 'Calendar Permission Missing',
+          state: status.calendar,
+          error: status.calendarError,
+          onTap: () {
+            ref.read(authGateProvider.notifier).reset();
+          },
+        ),
+        _StatusTile(
+          label: 'Drive Synced',
+          failedLabel: 'Drive Sync Failed',
+          permissionLabel: 'Drive Permission Missing',
+          state: status.drive,
+          error: status.driveError,
+          onTap: () {
+            ref.read(authGateProvider.notifier).reset();
+          },
+        ),
+        _StatusTile(
+          label: 'Gmail Synced',
+          failedLabel: 'Gmail Sync Failed',
+          permissionLabel: 'Gmail Permission Missing',
+          state: status.gmail,
+          error: status.gmailError,
+          onTap: () {
+            ref.read(authGateProvider.notifier).reset();
+          },
+        ),
+        _StatusTile(
+          label: 'Classroom Synced',
+          failedLabel: 'Classroom Sync Failed',
+          permissionLabel: 'Classroom Permission Missing',
+          state: status.classroom,
+          error: status.classroomError,
+          onTap: () {
+            ref.read(authGateProvider.notifier).reset();
+          },
+        ),
+        const SizedBox(height: 12),
+      ],
+    );
+  }
+}
+
+class _StatusTile extends StatelessWidget {
+  final String label;
+  final String failedLabel;
+  final String? permissionLabel;
+  final IntegrationStatusState state;
+  final String? error;
+  final VoidCallback onTap;
+
+  const _StatusTile({
+    required this.label,
+    required this.failedLabel,
+    this.permissionLabel,
+    required this.state,
+    this.error,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    Color iconColor;
+    IconData iconData;
+    String displayLabel = label;
+    bool isClickable = false;
+
+    switch (state) {
+      case IntegrationStatusState.connected:
+        iconData = Icons.check_circle_outline;
+        iconColor = OneDarkTheme.success;
+        break;
+      case IntegrationStatusState.failed:
+        iconData = Icons.warning_amber_rounded;
+        iconColor = OneDarkTheme.error;
+        displayLabel = failedLabel;
+        isClickable = true;
+        break;
+      case IntegrationStatusState.permissionMissing:
+        iconData = Icons.warning_amber_rounded;
+        iconColor = OneDarkTheme.warning;
+        displayLabel = permissionLabel ?? failedLabel;
+        isClickable = true;
+        break;
+      case IntegrationStatusState.loading:
+        iconData = Icons.hourglass_empty;
+        iconColor = OneDarkTheme.textDark;
+        break;
+    }
+
+    Widget content = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
+      child: Row(
+        children: [
+          state == IntegrationStatusState.loading
+              ? const SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 1.5,
+                    color: OneDarkTheme.textDark,
+                  ),
+                )
+              : Icon(iconData, color: iconColor, size: 14),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              displayLabel,
+              style: TextStyle(
+                color: isClickable ? iconColor : OneDarkTheme.textMain,
+                fontSize: 12,
+                fontWeight: isClickable ? FontWeight.bold : FontWeight.normal,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          if (isClickable)
+            Icon(Icons.refresh, color: iconColor, size: 12),
+        ],
+      ),
+    );
+
+    if (isClickable) {
+      return InkWell(
+        onTap: () {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              backgroundColor: OneDarkTheme.surface,
+              title: const Text('Resolve Connection Issue', style: TextStyle(color: OneDarkTheme.textLight)),
+              content: Text(
+                'This integration is currently failing with the following error:\n\n'
+                '${error ?? "Unknown error"}\n\n'
+                'Would you like to reset authentication credentials to resolve this issue?',
+                style: const TextStyle(color: OneDarkTheme.textMain, fontSize: 13, height: 1.4),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancel', style: TextStyle(color: OneDarkTheme.textDark)),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: OneDarkTheme.primary),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    onTap();
+                  },
+                  child: const Text('Reset & Re-authenticate', style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            ),
+          );
+        },
+        child: content,
+      );
+    }
+
+    return content;
   }
 }

@@ -30,21 +30,27 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
 });
 
 final calendarRepositoryProvider = Provider<CalendarRepository>((ref) {
-  return CalendarRepositoryImpl();
+  final authRepo = ref.watch(authRepositoryProvider);
+  final storage = ref.watch(secureStorageProvider);
+  return CalendarRepositoryImpl(authRepo, storage);
 });
 
 final driveRepositoryProvider = Provider<DriveRepository>((ref) {
-  return DriveRepositoryImpl();
+  final authRepo = ref.watch(authRepositoryProvider);
+  return DriveRepositoryImpl(authRepo);
 });
 
 final classroomRepositoryProvider = Provider<ClassroomRepository>((ref) {
   final db = ref.watch(databaseProvider);
-  return ClassroomRepositoryImpl(db);
+  final authRepo = ref.watch(authRepositoryProvider);
+  return ClassroomRepositoryImpl(db, authRepo);
 });
 
 final emailRepositoryProvider = Provider<EmailRepository>((ref) {
   final db = ref.watch(databaseProvider);
-  return EmailRepositoryImpl(db);
+  final authRepo = ref.watch(authRepositoryProvider);
+  final storage = ref.watch(secureStorageProvider);
+  return EmailRepositoryImpl(db, authRepo, storage);
 });
 
 final aiRepositoryProvider = Provider<AIRepository>((ref) {

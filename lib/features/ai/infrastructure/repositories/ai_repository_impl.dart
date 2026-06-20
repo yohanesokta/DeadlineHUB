@@ -34,6 +34,11 @@ class AIRepositoryImpl implements AIRepository {
 
   @override
   Future<String> chat(String message) async {
+    final apiKey = await _secureStorage.getGeminiApiKey();
+    if (apiKey == null || apiKey.isEmpty) {
+      throw Exception('Gemini API Key is missing. Connect account first.');
+    }
+
     // Save user message to Drift SQLite DB
     final userMsgId = const Uuid().v4();
     await _db.into(_db.chats).insert(
@@ -45,19 +50,11 @@ class AIRepositoryImpl implements AIRepository {
       ),
     );
 
-    final apiKey = await _secureStorage.getGeminiApiKey();
     String responseText = "";
-
-    if (apiKey != null && apiKey.isNotEmpty && apiKey != "mock_key") {
-      try {
-        responseText = await _runGeminiAgentFlow(apiKey, message);
-      } catch (e) {
-        responseText = "Error communicating with Gemini API: $e. Falling back to agent simulation.\n\n${_runMockAgentFlow(message)}";
-      }
-    } else {
-      // Simulate tool calling agent flow locally for immediate prototyping
-      await Future.delayed(const Duration(seconds: 1));
-      responseText = await _runMockAgentFlow(message);
+    try {
+      responseText = await _runGeminiAgentFlow(apiKey, message);
+    } catch (e) {
+      responseText = "Error communicating with Gemini Agent: $e";
     }
 
     // Save AI response to database
@@ -76,7 +73,6 @@ class AIRepositoryImpl implements AIRepository {
 
   @override
   Stream<String> chatStream(String message) async* {
-    // For simplicity, yield the full response in chunked delay simulations
     final result = await chat(message);
     final words = result.split(' ');
     String current = "";
@@ -92,16 +88,17 @@ class AIRepositoryImpl implements AIRepository {
     await _db.delete(_db.chats).go();
   }
 
-  /// Run Gemini with tools definition
+  /// Run Gemini with tools definition using real Google Workspace repositories
   Future<String> _runGeminiAgentFlow(String apiKey, String userPrompt) async {
+    final modelName = await _secureStorage.getGeminiModel() ?? 'models/gemini-2.0-flash';
     final model = GenerativeModel(
-      model: 'gemini-1.5-flash',
+      model: modelName,
       apiKey: apiKey,
       tools: [
         Tool(functionDeclarations: [
           FunctionDeclaration(
             'list_classroom_deadlines',
-            'Fetches student deadlines and course assignments',
+            'Fetches student deadlines and course assignments from Google Classroom',
             Schema.object(properties: {}),
           ),
           FunctionDeclaration(
@@ -120,6 +117,11 @@ class AIRepositoryImpl implements AIRepository {
               'durationHours': Schema.integer(description: 'Duration of study block in hours'),
             }, requiredProperties: ['title', 'hoursFromNow', 'durationHours']),
           ),
+          FunctionDeclaration(
+            'list_recent_emails',
+            'Fetches student academic and course-related emails from Gmail',
+            Schema.object(properties: {}),
+          ),
         ]),
       ],
     );
@@ -135,7 +137,7 @@ class AIRepositoryImpl implements AIRepository {
     // Process tool calls requested by Gemini
     final functionCall = functionCalls.first;
     if (functionCall.name == 'list_classroom_deadlines') {
-      final assignments = await _classroomRepo.fetchAssignments();
+      final assignments = await _classroomRepo.fetchAssignments(forceRefresh: true);
       final deadlineText = assignments.map((a) => "- ${a.courseName}: ${a.title} (Due: ${a.dueTime})").join("\n");
       
       final toolResponse = await chatSession.sendMessage(Content.functionResponse(
@@ -155,6 +157,17 @@ class AIRepositoryImpl implements AIRepository {
         {'result': fileText},
       ));
       return toolResponse.text ?? "Here are the files I found:\n$fileText";
+    }
+
+    if (functionCall.name == 'list_recent_emails') {
+      final emails = await _emailRepo.fetchRecentEmails(forceRefresh: true);
+      final emailText = emails.map((e) => "- From: ${e.sender}\n  Subject: ${e.subject}\n  Summary: ${e.bodySummary ?? e.snippet}").join("\n\n");
+      
+      final toolResponse = await chatSession.sendMessage(Content.functionResponse(
+        functionCall.name,
+        {'result': emailText},
+      ));
+      return toolResponse.text ?? "Here is your email digest:\n$emailText";
     }
 
     if (functionCall.name == 'create_calendar_event') {
@@ -181,67 +194,5 @@ class AIRepositoryImpl implements AIRepository {
     }
 
     return response.text ?? "Completed agent actions.";
-  }
-
-  /// Interactive simulated tool-calling flow
-  Future<String> _runMockAgentFlow(String prompt) async {
-    final query = prompt.toLowerCase();
-    
-    if (query.contains('deadline') || query.contains('tugas') || query.contains('classroom')) {
-      final items = await _classroomRepo.fetchAssignments();
-      final list = items.map((a) => "• **${a.courseName}**: ${a.title}\n  *Due: ${a.dueTime?.toLocal()}*").join("\n");
-      return "🔍 **[Tool: Classroom Monitor]** Fetching assignments from SQLite database...\n\nHere are your upcoming coursework items:\n\n$list\n\nWould you like me to schedule study sessions for any of these?";
-    }
-
-    if (query.contains('schedule') || query.contains('belajar') || query.contains('calendar')) {
-      final now = DateTime.now();
-      final event = CalendarEvent(
-        id: 'gen_${DateTime.now().millisecondsSinceEpoch}',
-        title: 'Study Session: Linear Algebra Review',
-        description: 'Auto-scheduled by DeadlineAI for: $prompt',
-        startTime: now.add(const Duration(days: 1, hours: 2)),
-        endTime: now.add(const Duration(days: 1, hours: 4)),
-      );
-      await _calendarRepo.createEvent(event);
-      return "📅 **[Tool: Calendar Creator]** Creating event in Google Calendar...\n\nI've scheduled a study block for you:\n\n* **Event**: ${event.title}\n* **Time**: ${event.startTime.toLocal()} to ${event.endTime.toLocal()}\n\nLet me know if you want to modify this slot.";
-    }
-
-    if (query.contains('drive') || query.contains('cari file') || query.contains('spreadsheet') || query.contains('proposal')) {
-      final term = query.contains('spreadsheet') ? 'spreadsheet' : (query.contains('proposal') ? 'proposal' : 'learning');
-      final files = await _driveRepo.searchFiles(term);
-      if (files.isEmpty) {
-        return "📁 **[Tool: Drive Quick Access]** Searching files...\n\nNo files found matching key '$term'.";
-      }
-      final fileList = files.map((f) => "• [${f.name}](${f.webViewLink}) (Modified: ${f.modifiedTime})").join("\n");
-      return "📁 **[Tool: Drive Quick Access]** Searching files matching '$term'...\n\nI found the following items in your Google Drive:\n\n$fileList";
-    }
-
-    if (query.contains('email') || query.contains('surat') || query.contains('dosen')) {
-      final emails = await _emailRepo.fetchRecentEmails();
-      final summaryList = emails.where((e) => e.isAcademic).map((e) => "• **${e.sender}**:\n  *Subject: ${e.subject}*\n  *Summary: ${e.bodySummary}*").join("\n\n");
-      return "✉️ **[Tool: Academic Email Dashboard]** Reading and analyzing academic emails...\n\nHere is your digest:\n\n$summaryList";
-    }
-
-    if (query.contains('meet') || query.contains('rapat') || query.contains('kelompok')) {
-      final now = DateTime.now();
-      final event = CalendarEvent(
-        id: 'gen_meet_${DateTime.now().millisecondsSinceEpoch}',
-        title: 'Group Project Sync',
-        description: 'Discussing final report milestone',
-        startTime: now.add(const Duration(hours: 4)),
-        endTime: now.add(const Duration(hours: 5)),
-        meetLink: 'https://meet.google.com/xyz-mock-meet',
-      );
-      await _calendarRepo.createEvent(event);
-      return "📹 **[Tool: Meet Scheduler]** Generating meeting invitation...\n\nI have scheduled the group meeting and generated the link:\n\n* **Title**: ${event.title}\n* **Time**: ${event.startTime.toLocal()}\n* **Meet Link**: ${event.meetLink}\n\nInvitations have been sent to participants!";
-    }
-
-    // Default conversational response
-    return "Hi, I am your DeadlineAI academic assistant. You can ask me to:\n"
-        "• *Show upcoming deadlines* (Classroom Monitor)\n"
-        "• *Schedule a study session* (Calendar Creator)\n"
-        "• *Search for a file* (Drive Quick Access)\n"
-        "• *Create a meeting* (Meet Scheduler)\n"
-        "• *Summarize academic emails* (Gmail Reader)";
   }
 }
