@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
 class OneDarkTheme {
-  static const Color background = Color(0xFF1E222A); // Sidebar / Outer Background
-  static const Color surface = Color(0xFF282C34);    // Center Panel / Editor Background
-  static const Color cardBg = Color(0xFF21252B);     // Inner Cards / Elements Background
+  static const Color background = Color(0xFF0F1115); // Dark Modern background
+  static const Color surface = Color(0xFF171A1F);    // Center Panel / Editor Background
+  static const Color cardBg = Color(0xFF1E222A);     // Inner Cards / Elements Background
   
   static const Color primary = Color(0xFF61AFEF);    // Accent Cyan-Blue
   static const Color success = Color(0xFF98C379);    // Accent Green
@@ -13,10 +13,10 @@ class OneDarkTheme {
   static const Color cyan = Color(0xFF56B6C2);       // Accent Cyan
   
   static const Color textMain = Color(0xFFABB2BF);   // Medium Gray Body
-  static const Color textLight = Color(0xFFFFFFFF);  // White Heading
+  static const Color textLight = Color(0xFFE2E2E8);  // White Heading
   static const Color textDark = Color(0xFF5C6370);   // Darker Gray / Disabled
   
-  static const Color border = Color(0xFF3E4451);     // Boundary Line
+  static const Color border = Color(0x14FFFFFF);     // Boundary Line (rgba(255, 255, 255, 0.08))
 
   static ThemeData get darkTheme {
     return ThemeData(

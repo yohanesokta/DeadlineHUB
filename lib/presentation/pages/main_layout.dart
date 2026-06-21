@@ -6,6 +6,8 @@ import 'package:deadlinehub/core/theme/theme.dart';
 import 'package:deadlinehub/core/providers/providers.dart';
 import 'package:deadlinehub/core/services/sync/sync_status_repository.dart';
 import 'package:deadlinehub/features/ai/domain/repositories/ai_repository.dart';
+import 'package:deadlinehub/core/database/database.dart';
+import 'package:drift/drift.dart' hide Column;
 
 class MainLayout extends ConsumerStatefulWidget {
   final Widget child;
@@ -269,18 +271,19 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
                           style: theme.textTheme.titleMedium,
                         ),
                         const Spacer(),
-                        IconButton(
-                          icon: Icon(
-                            _rightPanelExpanded ? Icons.splitscreen : Icons.splitscreen_outlined,
-                            size: 20,
-                            color: OneDarkTheme.textMain,
+                        if (selectedIndex != 1)
+                          IconButton(
+                            icon: Icon(
+                              _rightPanelExpanded ? Icons.splitscreen : Icons.splitscreen_outlined,
+                              size: 20,
+                              color: OneDarkTheme.textMain,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _rightPanelExpanded = !_rightPanelExpanded;
+                              });
+                            },
                           ),
-                          onPressed: () {
-                            setState(() {
-                              _rightPanelExpanded = !_rightPanelExpanded;
-                            });
-                          },
-                        ),
                       ],
                     ),
                   ),
@@ -333,70 +336,9 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
           ),
 
           // Contextual Right Panel (Collapsible)
-          if (_rightPanelExpanded) ...[
+          if (_rightPanelExpanded && selectedIndex != 1) ...[
             const VerticalDivider(),
-            Container(
-              width: 280,
-              color: OneDarkTheme.background,
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Academic Overview',
-                    style: TextStyle(
-                      color: OneDarkTheme.textLight,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  // Today's summary widget
-                  _QuickStatCard(
-                    title: "Today's Schedule",
-                    value: "1 Class",
-                    icon: Icons.calendar_today,
-                    color: OneDarkTheme.cyan,
-                  ),
-                  const SizedBox(height: 12),
-                  _QuickStatCard(
-                    title: "Assignments Pending",
-                    value: "3 Items",
-                    icon: Icons.assignment_late,
-                    color: OneDarkTheme.warning,
-                  ),
-                  
-                  const SizedBox(height: 24),
-                  const Text(
-                    'AI Recommendation',
-                    style: TextStyle(
-                      color: OneDarkTheme.textLight,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: OneDarkTheme.cardBg,
-                      border: Border.all(color: OneDarkTheme.border),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Text(
-                      'You have 2 deadlines within the next 48 hours (Machine Learning & PKM Proposal). '
-                      'Ask me: "Schedule study session for ML" to block out time.',
-                      style: TextStyle(
-                        color: OneDarkTheme.textMain,
-                        fontSize: 12,
-                        height: 1.4,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            const _RightAiAssistantPanel(),
           ]
         ],
       ),
@@ -442,76 +384,44 @@ class _SidebarItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 4),
-      child: ListTile(
-        onTap: onTap,
-        dense: true,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        tileColor: isSelected ? OneDarkTheme.border.withOpacity(0.3) : Colors.transparent,
-        leading: Icon(
-          icon,
-          size: 18,
-          color: isSelected ? OneDarkTheme.primary : OneDarkTheme.textMain,
-        ),
-        title: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? OneDarkTheme.textLight : OneDarkTheme.textMain,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            fontSize: 13,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _QuickStatCard extends StatelessWidget {
-  final String title;
-  final String value;
-  final IconData icon;
-  final Color color;
-
-  const _QuickStatCard({
-    required this.title,
-    required this.value,
-    required this.icon,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: OneDarkTheme.cardBg,
-        border: Border.all(color: OneDarkTheme.border),
+        color: isSelected ? OneDarkTheme.primary.withOpacity(0.08) : Colors.transparent,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            backgroundColor: color.withOpacity(0.1),
-            radius: 16,
-            child: Icon(icon, color: color, size: 16),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(color: OneDarkTheme.textMain, fontSize: 11),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Stack(
+          children: [
+            ListTile(
+              onTap: onTap,
+              dense: true,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              leading: Icon(
+                icon,
+                size: 18,
+                color: isSelected ? OneDarkTheme.primary : OneDarkTheme.textMain,
+              ),
+              title: Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? OneDarkTheme.textLight : OneDarkTheme.textMain,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  fontSize: 13,
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: const TextStyle(color: OneDarkTheme.textLight, fontWeight: FontWeight.bold, fontSize: 13),
-                ),
-              ],
+              ),
             ),
-          )
-        ],
+            if (isSelected)
+              Positioned(
+                right: 0,
+                top: 0,
+                bottom: 0,
+                width: 3,
+                child: Container(
+                  color: OneDarkTheme.primary,
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -805,6 +715,472 @@ class _AiTaskTimeline extends ConsumerWidget {
       },
       loading: () => const SizedBox.shrink(),
       error: (e, s) => const SizedBox.shrink(),
+    );
+  }
+}
+
+class _RightAiAssistantPanel extends ConsumerStatefulWidget {
+  const _RightAiAssistantPanel();
+
+  @override
+  ConsumerState<_RightAiAssistantPanel> createState() => _RightAiAssistantPanelState();
+}
+
+class _RightAiAssistantPanelState extends ConsumerState<_RightAiAssistantPanel> {
+  final TextEditingController _controller = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+  bool _isLoading = false;
+
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent + 100,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
+  Future<void> _sendMessage(String text) async {
+    if (text.trim().isEmpty) return;
+    setState(() => _isLoading = true);
+    try {
+      await ref.read(aiRepositoryProvider).chat(text);
+    } catch (e) {
+      // Handled inside AI repo
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final db = ref.watch(databaseProvider);
+
+    return Container(
+      width: 300,
+      color: OneDarkTheme.background,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Academic Assistant',
+                  style: TextStyle(
+                    color: OneDarkTheme.textLight,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete_sweep_outlined, color: OneDarkTheme.error, size: 18),
+                  tooltip: 'Clear History',
+                  onPressed: () {
+                    ref.read(aiRepositoryProvider).clearHistory();
+                  },
+                ),
+              ],
+            ),
+          ),
+          
+          const Divider(),
+
+          // Chat Messages
+          Expanded(
+            child: StreamBuilder<List<Chat>>(
+              stream: (db.select(db.chats)
+                    ..orderBy([(t) => OrderingTerm(expression: t.timestamp)]))
+                  .watch(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: CircularProgressIndicator(strokeWidth: 2, color: OneDarkTheme.primary),
+                  );
+                }
+
+                final messages = snapshot.data ?? [];
+                
+                if (messages.isEmpty) {
+                  return const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(20),
+                      child: Text(
+                        'Tanya saya tentang deadline, jadwal kuliah, atau file Drive Anda.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: OneDarkTheme.textDark, fontSize: 13),
+                      ),
+                    ),
+                  );
+                }
+
+                WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+
+                return ListView.builder(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  itemCount: messages.length + (_isLoading ? 1 : 0),
+                  itemBuilder: (context, index) {
+                    if (index == messages.length) {
+                      return const Align(
+                        alignment: Alignment.centerLeft,
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8),
+                          child: SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: OneDarkTheme.primary),
+                          ),
+                        ),
+                      );
+                    }
+                    final msg = messages[index];
+                    final isUser = msg.role == 'user';
+
+                    return Align(
+                      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isUser ? OneDarkTheme.primary.withOpacity(0.15) : OneDarkTheme.cardBg,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isUser ? OneDarkTheme.primary.withOpacity(0.3) : OneDarkTheme.border,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              isUser ? 'You' : 'AI',
+                              style: TextStyle(
+                                color: isUser ? OneDarkTheme.primary : OneDarkTheme.cyan,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            _SidebarMarkdownText(content: msg.content),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+
+          // Quick Action Chips
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              children: [
+                _QuickActionChip(
+                  label: "Apa deadline saya?",
+                  onTap: () => _sendMessage("Apa deadline saya?"),
+                ),
+                const SizedBox(width: 8),
+                _QuickActionChip(
+                  label: "Jadwalkan belajar besok",
+                  onTap: () => _sendMessage("Jadwalkan belajar besok"),
+                ),
+                const SizedBox(width: 8),
+                _QuickActionChip(
+                  label: "Analisis tugas tersulit",
+                  onTap: () => _sendMessage("Analisis tugas tersulit"),
+                ),
+              ],
+            ),
+          ),
+
+          const Divider(),
+
+          // Chat Input
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    style: const TextStyle(fontSize: 13, color: OneDarkTheme.textLight),
+                    decoration: InputDecoration(
+                      hintText: 'Tanya asisten...',
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      fillColor: OneDarkTheme.cardBg,
+                      filled: true,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: OneDarkTheme.border),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: OneDarkTheme.border),
+                      ),
+                    ),
+                    onSubmitted: (val) {
+                      _sendMessage(val);
+                      _controller.clear();
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  onPressed: () {
+                    _sendMessage(_controller.text);
+                    _controller.clear();
+                  },
+                  icon: const Icon(Icons.arrow_upward, size: 18),
+                  style: IconButton.styleFrom(
+                    backgroundColor: OneDarkTheme.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.all(10),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SidebarMarkdownText extends StatelessWidget {
+  final String content;
+
+  const _SidebarMarkdownText({required this.content});
+
+  List<InlineSpan> _parseInline(String inlineText, TextStyle baseStyle) {
+    final List<InlineSpan> spans = [];
+    final RegExp exp = RegExp(r'(\*\*.*?\*\*|\*.*?\*|`.*?`)');
+    int start = 0;
+
+    final matches = exp.allMatches(inlineText);
+    for (final match in matches) {
+      if (match.start > start) {
+        spans.add(TextSpan(
+          text: inlineText.substring(start, match.start),
+          style: baseStyle,
+        ));
+      }
+
+      final matchedText = match.group(0)!;
+      if (matchedText.startsWith('**') && matchedText.endsWith('**')) {
+        spans.add(TextSpan(
+          text: matchedText.substring(2, matchedText.length - 2),
+          style: baseStyle.copyWith(fontWeight: FontWeight.bold),
+        ));
+      } else if (matchedText.startsWith('*') && matchedText.endsWith('*')) {
+        spans.add(TextSpan(
+          text: matchedText.substring(1, matchedText.length - 1),
+          style: baseStyle.copyWith(fontStyle: FontStyle.italic),
+        ));
+      } else if (matchedText.startsWith('`') && matchedText.endsWith('`')) {
+        spans.add(TextSpan(
+          text: matchedText.substring(1, matchedText.length - 1),
+          style: baseStyle.copyWith(
+            fontFamily: 'monospace',
+            backgroundColor: Colors.white.withOpacity(0.08),
+          ),
+        ));
+      }
+
+      start = match.end;
+    }
+
+    if (start < inlineText.length) {
+      spans.add(TextSpan(
+        text: inlineText.substring(start),
+        style: baseStyle,
+      ));
+    }
+
+    return spans;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final style = theme.textTheme.bodyMedium ?? const TextStyle(color: OneDarkTheme.textMain, fontSize: 13);
+    
+    final List<Widget> children = [];
+    final lines = content.split('\n');
+    
+    bool inCodeBlock = false;
+    List<String> codeBlockLines = [];
+
+    for (var i = 0; i < lines.length; i++) {
+      final line = lines[i];
+
+      if (line.trim().startsWith('```')) {
+        if (inCodeBlock) {
+          final codeContent = codeBlockLines.join('\n');
+          children.add(
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.symmetric(vertical: 4),
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E222A),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: OneDarkTheme.border),
+              ),
+              child: SelectableText(
+                codeContent,
+                style: style.copyWith(
+                  fontFamily: 'monospace',
+                  fontSize: 11,
+                  color: const Color(0xFFABB2BF),
+                ),
+              ),
+            ),
+          );
+          codeBlockLines.clear();
+          inCodeBlock = false;
+        } else {
+          inCodeBlock = true;
+        }
+        continue;
+      }
+
+      if (inCodeBlock) {
+        codeBlockLines.add(line);
+        continue;
+      }
+
+      final trimmed = line.trim();
+
+      if (trimmed.startsWith('# ')) {
+        children.add(
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Text(
+              trimmed.substring(2),
+              style: style.copyWith(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        );
+      } else if (trimmed.startsWith('## ')) {
+        children.add(
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Text(
+              trimmed.substring(3),
+              style: style.copyWith(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        );
+      } else if (trimmed.startsWith('### ')) {
+        children.add(
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 3),
+            child: Text(
+              trimmed.substring(4),
+              style: style.copyWith(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        );
+      } else if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+        final contentText = trimmed.substring(2);
+        children.add(
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('• ', style: style.copyWith(fontWeight: FontWeight.bold)),
+                Expanded(
+                  child: RichText(
+                    text: TextSpan(
+                      children: _parseInline(contentText, style),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      } else if (trimmed.isNotEmpty) {
+        children.add(
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2),
+            child: RichText(
+              text: TextSpan(
+                children: _parseInline(line, style),
+              ),
+            ),
+          ),
+        );
+      } else {
+        children.add(const SizedBox(height: 4));
+      }
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: children,
+    );
+  }
+}
+
+class _QuickActionChip extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+
+  const _QuickActionChip({
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: OneDarkTheme.border,
+          border: Border.all(color: OneDarkTheme.border),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(
+            color: OneDarkTheme.textLight,
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
     );
   }
 }

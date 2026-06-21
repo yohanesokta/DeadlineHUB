@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>DeadlineHUB - Academic Drive</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "background": "#111317",
+                        "surface-dim": "#111317",
+                        "primary-fixed": "#cde5ff",
+                        "surface": "#111317",
+                        "primary-container": "#61afef",
+                        "on-primary": "#003352",
+                        "on-surface-variant": "#c0c7d1",
+                        "inverse-primary": "#006399",
+                        "on-error-container": "#ffdad6",
+                        "primary": "#95ccff",
+                        "on-surface": "#e2e2e8",
+                        "tertiary-fixed-dim": "#a7d387",
+                        "surface-variant": "#333539",
+                        "on-tertiary-fixed-variant": "#2b5013",
+                        "surface-container-high": "#282a2e",
+                        "tertiary-container": "#8bb56c",
+                        "surface-container-highest": "#333539",
+                        "on-background": "#e2e2e8",
+                        "secondary-container": "#6d2486",
+                        "on-primary-fixed-variant": "#004a75",
+                        "on-primary-fixed": "#001d32",
+                        "tertiary-fixed": "#c3f0a1",
+                        "surface-container-lowest": "#0c0e12",
+                        "on-primary-container": "#004167",
+                        "secondary": "#f0b0ff",
+                        "on-tertiary-fixed": "#0a2100",
+                        "primary-fixed-dim": "#95ccff",
+                        "on-secondary-fixed-variant": "#6d2486",
+                        "tertiary": "#a7d387",
+                        "outline": "#8a919b",
+                        "on-secondary-fixed": "#330044",
+                        "surface-container": "#1e2024",
+                        "error": "#ffb4ab",
+                        "surface-tint": "#95ccff",
+                        "on-error": "#690005",
+                        "secondary-fixed-dim": "#f0b0ff",
+                        "surface-container-low": "#1a1c20",
+                        "error-container": "#93000a",
+                        "on-secondary": "#54016d",
+                        "on-tertiary": "#163800",
+                        "on-secondary-container": "#e796fe",
+                        "inverse-on-surface": "#2f3035",
+                        "secondary-fixed": "#fad7ff",
+                        "on-tertiary-container": "#23460a",
+                        "surface-bright": "#37393e",
+                        "outline-variant": "#404750",
+                        "inverse-surface": "#e2e2e8"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-max": "1440px",
+                        "stack-xs": "4px",
+                        "stack-sm": "8px",
+                        "unit": "4px",
+                        "margin-desktop": "48px",
+                        "margin-mobile": "16px",
+                        "stack-xl": "48px",
+                        "gutter": "24px",
+                        "stack-lg": "24px",
+                        "stack-md": "16px"
+                    },
+                    "fontFamily": {
+                        "body-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-md": ["Outfit"],
+                        "headline-xl": ["Outfit"],
+                        "label-md": ["Inter"],
+                        "headline-lg-mobile": ["Outfit"],
+                        "body-lg": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "headline-lg": ["Outfit"]
+                    },
+                    "fontSize": {
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "headline-xl": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "label-sm": ["10px", { "lineHeight": "14px", "fontWeight": "500" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Outfit:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            background-color: #0F1115; /* Fallback */
+        }
+        .glass-panel {
+            background: rgba(40, 44, 52, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glass-modal {
+            background: rgba(40, 44, 52, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glow-cyan {
+            box-shadow: 0 0 15px rgba(97, 175, 239, 0.4);
+        }
+        .glow-violet {
+            box-shadow: 0 0 15px rgba(240, 176, 255, 0.4);
+        }
+        .text-cyan {
+            color: #61AFEF;
+        }
+        .bg-cyan {
+            background-color: #61AFEF;
+        }
+        .border-cyan {
+            border-color: #61AFEF;
+        }
+        .text-violet {
+            color: #F0B0FF;
+        }
+        .bg-violet {
+            background-color: #F0B0FF;
+        }
+        .border-violet {
+            border-color: #F0B0FF;
+        }
+        .ambient-shadow {
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+        
+        /* Material Icon Alignment */
+        .material-symbols-outlined {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            vertical-align: middle;
+        }
+        
+        /* Custom Scrollbar for dark theme */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2); 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1); 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2); 
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md overflow-hidden selection:bg-primary-container selection:text-on-primary">
+<!-- App Container -->
+<div class="flex h-screen w-full relative">
+<!-- Sidebar Navigation -->
+<nav class="hidden md:flex flex-col z-40 bg-surface/60 backdrop-blur-xl docked left-0 h-full w-64 border-r border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]">
+<!-- Header -->
+<div class="p-stack-lg flex items-center gap-stack-sm border-b border-white/10">
+<div class="w-10 h-10 rounded-lg bg-primary-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-on-primary font-bold" style="font-variation-settings: 'FILL' 1;">hub</span>
+</div>
+<div>
+<h1 class="font-headline-md text-headline-md font-bold text-primary tracking-tight">DeadlineHUB</h1>
+<p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Academic Pro</p>
+</div>
+</div>
+<!-- CTA -->
+<div class="p-stack-md px-gutter">
+<button class="w-full bg-cyan text-[#003352] font-label-md text-label-md font-bold py-3 rounded-lg hover:glow-cyan transition-all duration-300 flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[18px]">add</span>
+                    Create Task
+                </button>
+</div>
+<!-- Navigation Links -->
+<div class="flex-1 overflow-y-auto py-stack-md flex flex-col gap-1">
+<!-- Dashboard -->
+<a class="flex items-center gap-4 px-gutter py-3 font-body-md text-body-md text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-all duration-200 active:scale-95 group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors">dashboard</span>
+                    Dashboard
+                </a>
+<!-- Calendar -->
+<a class="flex items-center gap-4 px-gutter py-3 font-body-md text-body-md text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-all duration-200 active:scale-95 group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors">calendar_month</span>
+                    Calendar
+                </a>
+<!-- Classroom -->
+<a class="flex items-center gap-4 px-gutter py-3 font-body-md text-body-md text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-all duration-200 active:scale-95 group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors">school</span>
+                    Classroom
+                </a>
+<!-- Emails -->
+<a class="flex items-center gap-4 px-gutter py-3 font-body-md text-body-md text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-all duration-200 active:scale-95 group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors">mail</span>
+                    Emails
+                </a>
+<!-- Drive (Active) -->
+<a class="flex items-center gap-4 px-gutter py-3 font-body-md text-body-md text-primary font-bold border-r-2 border-primary bg-primary/10 transition-transform duration-200 active:scale-95" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">hard_drive</span>
+                    Drive
+                </a>
+<!-- Settings -->
+<a class="flex items-center gap-4 px-gutter py-3 font-body-md text-body-md text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-all duration-200 active:scale-95 group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors">settings</span>
+                    Settings
+                </a>
+</div>
+<!-- Footer -->
+<div class="mt-auto border-t border-white/10 p-stack-md flex flex-col gap-2">
+<div class="flex items-center justify-between px-2 py-2 text-on-surface-variant font-label-md text-label-md rounded hover:bg-white/5 cursor-pointer transition-colors">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">cloud_done</span>
+                        Google API
+                    </div>
+<div class="w-2 h-2 rounded-full bg-tertiary shadow-[0_0_8px_rgba(167,211,135,0.8)]"></div>
+</div>
+<div class="flex items-center justify-between px-2 py-2 text-violet font-label-md text-label-md rounded hover:bg-white/5 cursor-pointer transition-colors">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">bolt</span>
+                        Gemini AI
+                    </div>
+<div class="w-2 h-2 rounded-full bg-violet shadow-[0_0_8px_rgba(240,176,255,0.8)]"></div>
+</div>
+</div>
+</nav>
+<!-- Center Content (Drive Interface) -->
+<main class="flex-1 h-full overflow-hidden flex flex-col relative z-20">
+<!-- Header Area -->
+<header class="h-24 shrink-0 flex items-center justify-between px-margin-desktop border-b border-white/10 glass-panel z-30">
+<div class="flex items-center gap-stack-lg flex-1">
+<h2 class="font-headline-lg text-headline-lg font-bold text-on-surface">Academic Drive</h2>
+<!-- Search Bar -->
+<div class="relative w-full max-w-md hidden lg:block">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
+<input class="w-full bg-[#1E222A]/40 border border-transparent focus:border-cyan focus:shadow-[inset_0_0_10px_rgba(97,175,239,0.1)] text-on-surface font-body-md text-body-md rounded-lg py-2.5 pl-12 pr-4 outline-none transition-all duration-300 placeholder-on-surface-variant/50" placeholder="Search files, folders, or content..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-stack-md">
+<button class="w-10 h-10 rounded-lg glass-panel flex items-center justify-center hover:bg-white/10 transition-colors text-on-surface-variant hover:text-cyan">
+<span class="material-symbols-outlined">filter_list</span>
+</button>
+<button class="bg-cyan text-[#003352] font-label-md text-label-md font-bold px-6 py-2.5 rounded-lg hover:glow-cyan transition-all duration-300 flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">upload</span>
+                        Upload
+                    </button>
+</div>
+</header>
+<!-- Scrollable Drive Canvas -->
+<div class="flex-1 overflow-y-auto p-margin-desktop flex flex-col gap-stack-xl relative">
+<!-- Quick Access -->
+<section class="flex flex-col gap-stack-md">
+<h3 class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Quick Access</h3>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-gutter">
+<!-- Quick File 1 -->
+<div class="glass-panel rounded-xl p-stack-md flex items-start gap-stack-sm cursor-pointer hover:border-cyan/50 hover:bg-white/5 transition-all group">
+<div class="w-10 h-10 rounded-lg bg-surface-container-highest flex items-center justify-center shrink-0 border border-white/5 text-error">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">picture_as_pdf</span>
+</div>
+<div class="flex-1 min-w-0">
+<h4 class="font-body-md text-body-md font-semibold text-on-surface truncate group-hover:text-cyan transition-colors">CS301_Midterm_Review.pdf</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant truncate">Opened 2 hrs ago</p>
+</div>
+</div>
+<!-- Quick File 2 -->
+<div class="glass-panel rounded-xl p-stack-md flex items-start gap-stack-sm cursor-pointer hover:border-cyan/50 hover:bg-white/5 transition-all group">
+<div class="w-10 h-10 rounded-lg bg-surface-container-highest flex items-center justify-center shrink-0 border border-white/5 text-primary-container">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">description</span>
+</div>
+<div class="flex-1 min-w-0">
+<h4 class="font-body-md text-body-md font-semibold text-on-surface truncate group-hover:text-cyan transition-colors">LIT101_Essay_Draft.docx</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant truncate">Opened Yesterday</p>
+</div>
+</div>
+<!-- Quick File 3 -->
+<div class="glass-panel rounded-xl p-stack-md flex items-start gap-stack-sm cursor-pointer hover:border-cyan/50 hover:bg-white/5 transition-all group border-l-2 border-l-error">
+<div class="w-10 h-10 rounded-lg bg-surface-container-highest flex items-center justify-center shrink-0 border border-white/5 text-[#FFB4AB]">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">slideshow</span>
+</div>
+<div class="flex-1 min-w-0">
+<h4 class="font-body-md text-body-md font-semibold text-on-surface truncate group-hover:text-cyan transition-colors">PHY204_Lab_Presentation.ppt</h4>
+<p class="font-body-sm text-body-sm text-error truncate">Due Tomorrow</p>
+</div>
+</div>
+<!-- Quick File 4 -->
+<div class="glass-panel rounded-xl p-stack-md flex items-start gap-stack-sm cursor-pointer hover:border-cyan/50 hover:bg-white/5 transition-all group">
+<div class="w-10 h-10 rounded-lg bg-surface-container-highest flex items-center justify-center shrink-0 border border-white/5 text-tertiary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">table_chart</span>
+</div>
+<div class="flex-1 min-w-0">
+<h4 class="font-body-md text-body-md font-semibold text-on-surface truncate group-hover:text-cyan transition-colors">Research_Data_Q3.xlsx</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant truncate">Opened 3 days ago</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Folders -->
+<section class="flex flex-col gap-stack-md">
+<div class="flex items-center justify-between">
+<h3 class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Courses</h3>
+<button class="text-cyan font-label-md text-label-md hover:underline">View All</button>
+</div>
+<div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-gutter">
+<!-- Folder 1 -->
+<div class="glass-panel rounded-xl p-stack-md flex flex-col items-center gap-stack-sm cursor-pointer hover:bg-white/5 hover:border-cyan/30 transition-all group">
+<div class="w-16 h-16 rounded-full bg-surface-container-highest flex items-center justify-center mb-2 group-hover:shadow-[0_0_15px_rgba(97,175,239,0.2)] transition-shadow">
+<span class="material-symbols-outlined text-[32px] text-cyan" style="font-variation-settings: 'FILL' 1;">folder</span>
+</div>
+<h4 class="font-body-md text-body-md font-semibold text-on-surface text-center">CS301</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant text-center">Algorithms</p>
+</div>
+<!-- Folder 2 -->
+<div class="glass-panel rounded-xl p-stack-md flex flex-col items-center gap-stack-sm cursor-pointer hover:bg-white/5 hover:border-cyan/30 transition-all group">
+<div class="w-16 h-16 rounded-full bg-surface-container-highest flex items-center justify-center mb-2 group-hover:shadow-[0_0_15px_rgba(97,175,239,0.2)] transition-shadow">
+<span class="material-symbols-outlined text-[32px] text-cyan" style="font-variation-settings: 'FILL' 1;">folder</span>
+</div>
+<h4 class="font-body-md text-body-md font-semibold text-on-surface text-center">PHY204</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant text-center">Quantum Mech</p>
+</div>
+<!-- Folder 3 -->
+<div class="glass-panel rounded-xl p-stack-md flex flex-col items-center gap-stack-sm cursor-pointer hover:bg-white/5 hover:border-cyan/30 transition-all group">
+<div class="w-16 h-16 rounded-full bg-surface-container-highest flex items-center justify-center mb-2 group-hover:shadow-[0_0_15px_rgba(97,175,239,0.2)] transition-shadow">
+<span class="material-symbols-outlined text-[32px] text-cyan" style="font-variation-settings: 'FILL' 1;">folder</span>
+</div>
+<h4 class="font-body-md text-body-md font-semibold text-on-surface text-center">LIT101</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant text-center">Mod Fiction</p>
+</div>
+<!-- Add Folder -->
+<div class="glass-panel rounded-xl p-stack-md flex flex-col items-center justify-center gap-stack-sm cursor-pointer hover:bg-white/5 hover:border-cyan/50 transition-all border-dashed group h-full min-h-[140px]">
+<span class="material-symbols-outlined text-[32px] text-on-surface-variant group-hover:text-cyan transition-colors">create_new_folder</span>
+<h4 class="font-label-md text-label-md text-on-surface-variant group-hover:text-cyan mt-2">New Folder</h4>
+</div>
+</div>
+</section>
+<!-- File List -->
+<section class="flex flex-col gap-stack-md pb-margin-desktop">
+<h3 class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">All Files</h3>
+<div class="glass-panel rounded-xl overflow-hidden">
+<!-- List Header -->
+<div class="grid grid-cols-12 gap-4 px-stack-lg py-stack-md border-b border-white/10 bg-surface-container-highest/30">
+<div class="col-span-6 font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Name</div>
+<div class="col-span-2 font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Size</div>
+<div class="col-span-2 font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Modified</div>
+<div class="col-span-2 font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider text-right">Actions</div>
+</div>
+<!-- List Items -->
+<div class="flex flex-col">
+<!-- Item 1 (Selected/Active State Example) -->
+<div class="grid grid-cols-12 gap-4 px-stack-lg py-stack-md border-b border-white/5 items-center hover:bg-white/5 transition-all bg-primary/5 cursor-pointer relative">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-cyan"></div>
+<div class="col-span-6 flex items-center gap-3">
+<span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">description</span>
+<span class="font-body-sm text-body-sm text-on-surface font-medium truncate">Research_Proposal_Final.docx</span>
+</div>
+<div class="col-span-2 font-body-sm text-body-sm text-on-surface-variant">2.4 MB</div>
+<div class="col-span-2 font-body-sm text-body-sm text-on-surface-variant">Oct 24, 2023</div>
+<div class="col-span-2 flex items-center justify-end gap-3 opacity-100">
+<button class="text-violet hover:text-white font-label-md text-label-md flex items-center gap-1 transition-colors" title="AI Summarize">
+<span class="material-symbols-outlined text-[16px]">auto_awesome</span>
+<span class="hidden xl:inline">Summarize</span>
+</button>
+<button class="text-cyan hover:text-white font-label-md text-label-md flex items-center gap-1 transition-colors" title="Download">
+<span class="material-symbols-outlined text-[16px]">download</span>
+</button>
+</div>
+</div>
+<!-- Item 2 -->
+<div class="grid grid-cols-12 gap-4 px-stack-lg py-stack-md border-b border-white/5 items-center hover:bg-white/5 transition-all cursor-pointer group">
+<div class="col-span-6 flex items-center gap-3">
+<span class="material-symbols-outlined text-error" style="font-variation-settings: 'FILL' 1;">picture_as_pdf</span>
+<span class="font-body-sm text-body-sm text-on-surface truncate">Lecture_04_Slides.pdf</span>
+</div>
+<div class="col-span-2 font-body-sm text-body-sm text-on-surface-variant">5.1 MB</div>
+<div class="col-span-2 font-body-sm text-body-sm text-on-surface-variant">Oct 22, 2023</div>
+<div class="col-span-2 flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="text-violet hover:text-white font-label-md text-label-md flex items-center gap-1 transition-colors" title="AI Summarize">
+<span class="material-symbols-outlined text-[16px]">auto_awesome</span>
+<span class="hidden xl:inline">Summarize</span>
+</button>
+<button class="text-cyan hover:text-white font-label-md text-label-md flex items-center gap-1 transition-colors" title="Download">
+<span class="material-symbols-outlined text-[16px]">download</span>
+</button>
+</div>
+</div>
+<!-- Item 3 -->
+<div class="grid grid-cols-12 gap-4 px-stack-lg py-stack-md items-center hover:bg-white/5 transition-all cursor-pointer group">
+<div class="col-span-6 flex items-center gap-3">
+<span class="material-symbols-outlined text-tertiary" style="font-variation-settings: 'FILL' 1;">table_chart</span>
+<span class="font-body-sm text-body-sm text-on-surface truncate">Dataset_Analysis.xlsx</span>
+</div>
+<div class="col-span-2 font-body-sm text-body-sm text-on-surface-variant">1.8 MB</div>
+<div class="col-span-2 font-body-sm text-body-sm text-on-surface-variant">Oct 20, 2023</div>
+<div class="col-span-2 flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="text-violet hover:text-white font-label-md text-label-md flex items-center gap-1 transition-colors" title="AI Summarize">
+<span class="material-symbols-outlined text-[16px]">auto_awesome</span>
+<span class="hidden xl:inline">Summarize</span>
+</button>
+<button class="text-cyan hover:text-white font-label-md text-label-md flex items-center gap-1 transition-colors" title="Download">
+<span class="material-symbols-outlined text-[16px]">download</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</section>
+</div>
+</main>
+<!-- Right Panel (AI Context) -->
+<aside class="hidden xl:flex flex-col z-50 bg-surface-container-high/85 backdrop-blur-2xl docked right-0 h-full w-80 border-l border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]">
+<!-- Drawer Header -->
+<div class="p-stack-lg flex items-center justify-between border-b border-white/10">
+<div>
+<h2 class="font-label-md text-label-md font-semibold text-secondary uppercase tracking-wider flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">auto_awesome</span>
+                        AI Assistant
+                    </h2>
+<p class="font-label-sm text-label-sm text-on-surface-variant mt-1">Luminous Depth Engine</p>
+</div>
+<button class="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center text-on-surface-variant transition-colors">
+<span class="material-symbols-outlined text-[18px]">close</span>
+</button>
+</div>
+<!-- Scrollable AI Content -->
+<div class="flex-1 overflow-y-auto p-stack-lg flex flex-col gap-stack-lg">
+<!-- File Insights Widget (Active Context) -->
+<div class="glass-panel rounded-xl p-stack-md border-violet/30 relative overflow-hidden">
+<!-- Subtle bg glow -->
+<div class="absolute top-0 right-0 w-32 h-32 bg-violet/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
+<div class="flex items-center gap-2 mb-4 relative z-10">
+<span class="material-symbols-outlined text-violet text-[20px]">description</span>
+<h3 class="font-body-md text-body-md font-semibold text-on-surface truncate">Research_Proposal_Final.docx</h3>
+</div>
+<div class="space-y-4 relative z-10">
+<div>
+<h4 class="font-label-sm text-label-sm text-violet uppercase tracking-wider mb-1">TL;DR Summary</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
+                                This document outlines the proposed methodology for the Q4 cognitive study. It highlights the need for a larger sample size and introduces a new variable tracking system.
+                            </p>
+</div>
+<div>
+<h4 class="font-label-sm text-label-sm text-violet uppercase tracking-wider mb-2">Key Terms Extracted</h4>
+<div class="flex flex-wrap gap-2">
+<span class="px-2 py-1 rounded bg-violet/10 border border-violet/20 font-label-sm text-label-sm text-violet">Cognitive Load</span>
+<span class="px-2 py-1 rounded bg-violet/10 border border-violet/20 font-label-sm text-label-sm text-violet">Sample Variance</span>
+<span class="px-2 py-1 rounded bg-violet/10 border border-violet/20 font-label-sm text-label-sm text-violet">Q4 Projections</span>
+</div>
+</div>
+<button class="w-full py-2 rounded border border-violet/30 text-violet font-label-md text-label-md hover:bg-violet/10 transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[16px]">chat</span>
+                            Chat with Document
+                        </button>
+</div>
+</div>
+<!-- General AI Chat / History -->
+<div class="flex flex-col gap-4">
+<div class="bg-primary-container/15 border border-primary-container/30 rounded-xl rounded-tr-sm p-3 self-end max-w-[85%]">
+<p class="font-body-sm text-body-sm text-on-surface">Can you find my lecture notes from last week's Physics class?</p>
+</div>
+<div class="bg-[#282C34]/90 border border-secondary/30 rounded-xl rounded-tl-sm p-3 self-start max-w-[85%] relative shadow-[0_0_15px_rgba(240,176,255,0.1)]">
+<span class="material-symbols-outlined absolute -left-2 -top-2 text-violet text-[16px] bg-background rounded-full">auto_awesome</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant">I found "Lecture_04_Slides.pdf" modified last Tuesday. Would you like me to summarize it for you?</p>
+</div>
+</div>
+</div>
+<!-- AI Input Area -->
+<div class="p-stack-md border-t border-white/10 bg-surface-container-highest/50">
+<div class="relative">
+<input class="w-full bg-[#1E222A]/80 border border-white/10 focus:border-violet focus:shadow-[inset_0_0_10px_rgba(240,176,255,0.1)] text-on-surface font-body-sm text-body-sm rounded-lg py-3 pl-4 pr-12 outline-none transition-all duration-300" placeholder="Ask AI about your files..." type="text"/>
+<button class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded flex items-center justify-center text-violet hover:bg-violet/20 transition-colors">
+<span class="material-symbols-outlined text-[20px]">send</span>
+</button>
+</div>
+</div>
+<!-- AI Drawer Footer Links -->
+<div class="flex items-center justify-center gap-4 py-3 border-t border-white/5 font-label-sm text-label-sm text-on-surface-variant">
+<a class="hover:text-secondary transition-colors" href="#">Settings</a>
+<span>•</span>
+<a class="hover:text-secondary transition-colors" href="#">History</a>
+</div>
+</aside>
+</div>
+</body></html>

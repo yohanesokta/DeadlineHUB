@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>DeadlineHUB Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Outfit:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed-dim": "#a7d387",
+                        "outline": "#8a919b",
+                        "on-surface-variant": "#c0c7d1",
+                        "on-primary-fixed": "#001d32",
+                        "surface-variant": "#333539",
+                        "tertiary": "#a7d387",
+                        "surface-tint": "#95ccff",
+                        "on-secondary": "#54016d",
+                        "on-surface": "#e2e2e8",
+                        "secondary-fixed-dim": "#f0b0ff",
+                        "on-tertiary-fixed": "#0a2100",
+                        "on-tertiary-container": "#23460a",
+                        "on-secondary-container": "#e796fe",
+                        "secondary-fixed": "#fad7ff",
+                        "surface-container-low": "#1a1c20",
+                        "surface-container-high": "#282a2e",
+                        "on-tertiary-fixed-variant": "#2b5013",
+                        "on-secondary-fixed": "#330044",
+                        "error-container": "#93000a",
+                        "tertiary-fixed": "#c3f0a1",
+                        "background": "#111317",
+                        "primary-container": "#61afef",
+                        "inverse-surface": "#e2e2e8",
+                        "on-primary-container": "#004167",
+                        "outline-variant": "#404750",
+                        "tertiary-container": "#8bb56c",
+                        "secondary-container": "#6d2486",
+                        "on-tertiary": "#163800",
+                        "primary": "#95ccff",
+                        "surface-container-highest": "#333539",
+                        "primary-fixed": "#cde5ff",
+                        "inverse-primary": "#006399",
+                        "secondary": "#f0b0ff",
+                        "on-primary": "#003352",
+                        "surface-bright": "#37393e",
+                        "surface-container": "#1e2024",
+                        "error": "#ffb4ab",
+                        "on-error": "#690005",
+                        "surface-container-lowest": "#0c0e12",
+                        "surface-dim": "#111317",
+                        "surface": "#111317",
+                        "on-secondary-fixed-variant": "#6d2486",
+                        "on-primary-fixed-variant": "#004a75",
+                        "inverse-on-surface": "#2f3035",
+                        "primary-fixed-dim": "#95ccff",
+                        "on-error-container": "#ffdad6",
+                        "on-background": "#e2e2e8"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "24px",
+                        "stack-xs": "4px",
+                        "margin-desktop": "48px",
+                        "stack-xl": "48px",
+                        "unit": "4px",
+                        "container-max": "1440px",
+                        "stack-sm": "8px",
+                        "margin-mobile": "16px",
+                        "stack-md": "16px",
+                        "stack-lg": "24px"
+                    },
+                    "fontFamily": {
+                        "body-sm": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-lg-mobile": ["Outfit"],
+                        "body-lg": ["Inter"],
+                        "headline-lg": ["Outfit"],
+                        "headline-xl": ["Outfit"],
+                        "headline-md": ["Outfit"],
+                        "label-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "label-sm": ["10px", { "lineHeight": "14px", "fontWeight": "500" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "headline-xl": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #0F1115;
+            color: #e2e2e8;
+        }
+        .glass-panel {
+            background: rgba(40, 44, 52, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glass-modal {
+            background: rgba(40, 44, 52, 0.85);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .text-glow { text-shadow: 0 0 10px rgba(97, 175, 239, 0.5); }
+        .text-glow-urgent { text-shadow: 0 0 10px rgba(224, 108, 117, 0.5); }
+        .neon-accent { border-left: 2px solid #E06C75; }
+        
+        /* Custom Scrollbar for sleek dark look */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+<body class="antialiased overflow-hidden flex h-screen">
+<!-- Left Sidebar: SideNavBar -->
+<nav class="fixed left-0 top-0 h-full flex flex-col z-40 w-64 bg-surface/60 backdrop-blur-xl border-r border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] flex-shrink-0">
+<!-- Header -->
+<div class="p-gutter flex items-center space-x-3">
+<div class="w-10 h-10 rounded-full bg-surface-container overflow-hidden border border-white/10 flex-shrink-0 relative group cursor-pointer">
+<img alt="User Profile Avatar" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" data-alt="A highly detailed close-up portrait of a student wearing smart glasses in a dimly lit cyberpunk-inspired room, glowing with neon blue screens. Soft, diffused lighting accentuates the modern, futuristic aesthetic. High contrast, sharp focus, 8k resolution, photorealistic style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCrZWGL1AQya-7u3nTTezg2588TU_GOoksM8MxKuLuT2bkQVtZDnm5DcuZe9DzeuqI1VgYeLaJ_Mn5jRnhHr8TtdEgsVSrMwdxQca7JfySPDvV18-entTRS6yR6_OwYn2KOYyaig8xeMmFiIgfLe0kM-ijvrsnm2KWN4C83U1riYr9BQV26-c8UdjGGfRS-VPr3gicMxC8DnYs0DxW4eIhclkHpZ-DOQ6maszq-DeL8AMf4Y7x8w4_XVzYolM8aA1FZV0RSvUQY_nM"/>
+<div class="absolute inset-0 bg-primary-container/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+</div>
+<div>
+<h1 class="font-headline-md text-headline-md font-bold text-primary">DeadlineHUB</h1>
+<p class="font-label-md text-label-md text-on-surface-variant">Academic Pro</p>
+</div>
+</div>
+<!-- CTA -->
+<div class="px-6 pb-6">
+<button class="w-full bg-primary-container text-on-primary-container font-label-md text-label-md py-3 rounded-lg flex items-center justify-center space-x-2 hover:shadow-[0_0_15px_rgba(97,175,239,0.4)] transition-all duration-200 group">
+<span class="material-symbols-outlined text-[18px] group-hover:rotate-90 transition-transform">add</span>
+<span>Create Task</span>
+</button>
+</div>
+<!-- Main Navigation -->
+<div class="flex-1 overflow-y-auto px-4 space-y-1">
+<a class="flex items-center space-x-3 px-4 py-3 rounded-lg text-primary font-bold border-r-2 border-primary bg-primary/10 transition-transform duration-200 active:scale-95" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+<span class="font-body-md text-body-md">Dashboard</span>
+</a>
+<a class="flex items-center space-x-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-all duration-200 active:scale-95" href="#">
+<span class="material-symbols-outlined">calendar_month</span>
+<span class="font-body-md text-body-md">Calendar</span>
+</a>
+<a class="flex items-center space-x-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-all duration-200 active:scale-95" href="#">
+<span class="material-symbols-outlined">school</span>
+<span class="font-body-md text-body-md">Classroom</span>
+</a>
+<a class="flex items-center space-x-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-all duration-200 active:scale-95" href="#">
+<span class="material-symbols-outlined">mail</span>
+<span class="font-body-md text-body-md">Emails</span>
+</a>
+<a class="flex items-center space-x-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-all duration-200 active:scale-95" href="#">
+<span class="material-symbols-outlined">hard_drive</span>
+<span class="font-body-md text-body-md">Drive</span>
+</a>
+<a class="flex items-center space-x-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-all duration-200 active:scale-95" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-body-md text-body-md">Settings</span>
+</a>
+</div>
+<!-- Footer / API Status -->
+<div class="p-6 border-t border-white/10 space-y-3">
+<div class="flex items-center justify-between text-on-surface-variant text-sm">
+<div class="flex items-center space-x-2">
+<span class="material-symbols-outlined text-[16px]">cloud_done</span>
+<span class="font-body-sm text-body-sm">Google API</span>
+</div>
+<div class="w-2 h-2 rounded-full bg-[#98C379] shadow-[0_0_8px_#98C379]"></div>
+</div>
+<div class="flex items-center justify-between text-on-surface-variant text-sm">
+<div class="flex items-center space-x-2">
+<span class="material-symbols-outlined text-[16px]">bolt</span>
+<span class="font-body-sm text-body-sm">Gemini AI</span>
+</div>
+<div class="w-2 h-2 rounded-full bg-[#C678DD] shadow-[0_0_8px_#C678DD]"></div>
+</div>
+</div>
+</nav>
+<!-- Main Canvas Area -->
+<main class="flex-1 ml-64 mr-80 h-full overflow-y-auto p-margin-desktop relative">
+<!-- Abstract Background Glow -->
+<div class="fixed top-[-10%] left-[20%] w-[50vw] h-[50vw] rounded-full bg-primary/5 blur-[120px] pointer-events-none z-0"></div>
+<div class="fixed bottom-[-10%] right-[10%] w-[40vw] h-[40vw] rounded-full bg-secondary/5 blur-[100px] pointer-events-none z-0"></div>
+<div class="relative z-10 space-y-stack-xl max-w-container-max mx-auto">
+<!-- Top Section: Weekly Planner -->
+<section>
+<div class="flex justify-between items-end mb-stack-md">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Weekly Planner</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Your upcoming focus sessions</p>
+</div>
+<button class="text-primary hover:text-white transition-colors flex items-center space-x-1 font-label-md text-label-md">
+<span>View Full Schedule</span>
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+<!-- Day Card 1 -->
+<div class="glass-panel p-5 rounded-xl hover:bg-white/5 transition-all group flex flex-col justify-between h-40 relative overflow-hidden">
+<div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary-container to-transparent opacity-50 group-hover:opacity-100 transition-opacity"></div>
+<div>
+<div class="flex justify-between items-start mb-2">
+<h3 class="font-headline-md text-headline-md text-primary">Mon, 12 Oct</h3>
+<span class="px-2 py-1 bg-surface-container rounded text-xs font-medium text-on-surface-variant border border-white/5">2 Tasks</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface truncate">Advanced Calculus Pset 4</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant truncate">Physics Lab Report Draft</p>
+</div>
+<div class="flex justify-end space-x-3 mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="font-label-md text-label-md text-[#61AFEF] hover:text-white transition-colors">Ubah</button>
+<button class="font-label-md text-label-md text-[#E06C75] border border-[#E06C75]/50 px-2 py-1 rounded hover:bg-[#E06C75]/10 transition-colors">Hapus</button>
+</div>
+</div>
+<!-- Day Card 2 -->
+<div class="glass-panel p-5 rounded-xl hover:bg-white/5 transition-all group flex flex-col justify-between h-40 relative overflow-hidden">
+<div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-tertiary to-transparent opacity-50 group-hover:opacity-100 transition-opacity"></div>
+<div>
+<div class="flex justify-between items-start mb-2">
+<h3 class="font-headline-md text-headline-md text-on-surface">Tue, 13 Oct</h3>
+<span class="px-2 py-1 bg-surface-container rounded text-xs font-medium text-on-surface-variant border border-white/5">1 Task</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface truncate">Literature Review Presentation</p>
+</div>
+<div class="flex justify-end space-x-3 mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="font-label-md text-label-md text-[#61AFEF] hover:text-white transition-colors">Ubah</button>
+<button class="font-label-md text-label-md text-[#E06C75] border border-[#E06C75]/50 px-2 py-1 rounded hover:bg-[#E06C75]/10 transition-colors">Hapus</button>
+</div>
+</div>
+<!-- Day Card 3 -->
+<div class="glass-panel p-5 rounded-xl hover:bg-white/5 transition-all group flex flex-col justify-between h-40 relative overflow-hidden opacity-70 hover:opacity-100">
+<div>
+<div class="flex justify-between items-start mb-2">
+<h3 class="font-headline-md text-headline-md text-on-surface-variant">Wed, 14 Oct</h3>
+<span class="px-2 py-1 bg-surface-container rounded text-xs font-medium text-on-surface-variant border border-white/5">Free</span>
+</div>
+<p class="font-body-sm text-body-sm text-outline italic">No scheduled tasks</p>
+</div>
+<div class="flex justify-end space-x-3 mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="font-label-md text-label-md text-[#61AFEF] hover:text-white transition-colors flex items-center"><span class="material-symbols-outlined text-[16px] mr-1">add</span> Add Task</button>
+</div>
+</div>
+</div>
+</section>
+<!-- Bottom Section: Classroom Deadlines -->
+<section>
+<div class="flex justify-between items-end mb-stack-md">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface flex items-center gap-2">
+                            Classroom Deadlines
+                            <span class="material-symbols-outlined text-[#E06C75] text-[24px]" style="font-variation-settings: 'FILL' 1;">warning</span>
+</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Prioritized by urgency</p>
+</div>
+<div class="flex space-x-2">
+<button class="p-2 rounded glass-panel hover:bg-white/10 text-on-surface"><span class="material-symbols-outlined">filter_list</span></button>
+</div>
+</div>
+<div class="space-y-4">
+<!-- Deadline Item 1 (Urgent) -->
+<div class="glass-panel p-5 rounded-xl flex items-center justify-between group hover:bg-white/5 transition-all neon-accent relative overflow-hidden">
+<div class="absolute inset-0 bg-gradient-to-r from-[#E06C75]/5 to-transparent pointer-events-none"></div>
+<div class="flex items-center space-x-5 z-10">
+<div class="flex flex-col items-center justify-center w-14 h-14 rounded-lg bg-surface-container border border-[#E06C75]/30">
+<span class="font-label-sm text-label-sm text-[#E06C75] uppercase">Oct</span>
+<span class="font-headline-md text-headline-md text-on-surface">11</span>
+</div>
+<div>
+<div class="flex items-center space-x-2 mb-1">
+<span class="px-2 py-0.5 rounded text-[10px] font-bold tracking-wider bg-primary/10 text-primary border border-primary/20">CS301</span>
+<span class="text-[#E06C75] font-label-sm text-label-sm flex items-center gap-1 text-glow-urgent">
+<span class="material-symbols-outlined text-[12px]">schedule</span> &lt;12h remaining
+                                    </span>
+</div>
+<h4 class="font-body-lg text-body-lg font-medium text-on-surface">Data Structures Final Project Submission</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant truncate max-w-xl">Ensure all unit tests pass before pushing to the main branch.</p>
+</div>
+</div>
+<div class="flex items-center space-x-4 z-10">
+<button class="font-label-md text-label-md text-[#98C379] hover:text-white transition-colors flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">check_circle</span> Selesai</button>
+<button class="font-label-md text-label-md text-[#61AFEF] hover:text-white transition-colors flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">open_in_new</span> Buka</button>
+</div>
+</div>
+<!-- Deadline Item 2 -->
+<div class="glass-panel p-5 rounded-xl flex items-center justify-between group hover:bg-white/5 transition-all relative overflow-hidden">
+<div class="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<div class="flex items-center space-x-5 z-10">
+<div class="flex flex-col items-center justify-center w-14 h-14 rounded-lg bg-surface-container border border-white/10">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Oct</span>
+<span class="font-headline-md text-headline-md text-on-surface">15</span>
+</div>
+<div>
+<div class="flex items-center space-x-2 mb-1">
+<span class="px-2 py-0.5 rounded text-[10px] font-bold tracking-wider bg-tertiary/10 text-tertiary border border-tertiary/20">PHY204</span>
+<span class="text-outline font-label-sm text-label-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">schedule</span> 4 days
+                                    </span>
+</div>
+<h4 class="font-body-lg text-body-lg font-medium text-on-surface">Quantum Mechanics Homework 6</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant truncate max-w-xl">Chapters 4 and 5 problems 1-10.</p>
+</div>
+</div>
+<div class="flex items-center space-x-4 z-10 opacity-60 group-hover:opacity-100 transition-opacity">
+<button class="font-label-md text-label-md text-[#98C379] hover:text-white transition-colors flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">check_circle</span> Selesai</button>
+<button class="font-label-md text-label-md text-[#61AFEF] hover:text-white transition-colors flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">open_in_new</span> Buka</button>
+</div>
+</div>
+<!-- Deadline Item 3 -->
+<div class="glass-panel p-5 rounded-xl flex items-center justify-between group hover:bg-white/5 transition-all relative overflow-hidden">
+<div class="flex items-center space-x-5 z-10">
+<div class="flex flex-col items-center justify-center w-14 h-14 rounded-lg bg-surface-container border border-white/10">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Oct</span>
+<span class="font-headline-md text-headline-md text-on-surface">18</span>
+</div>
+<div>
+<div class="flex items-center space-x-2 mb-1">
+<span class="px-2 py-0.5 rounded text-[10px] font-bold tracking-wider bg-secondary/10 text-secondary border border-secondary/20">LIT101</span>
+<span class="text-outline font-label-sm text-label-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">schedule</span> 1 week
+                                    </span>
+</div>
+<h4 class="font-body-lg text-body-lg font-medium text-on-surface">Modernist Poetry Essay Draft</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant truncate max-w-xl">1500 words focusing on T.S. Eliot.</p>
+</div>
+</div>
+<div class="flex items-center space-x-4 z-10 opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-opacity">
+<button class="font-label-md text-label-md text-[#98C379] hover:text-white transition-colors flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">check_circle</span> Selesai</button>
+<button class="font-label-md text-label-md text-[#61AFEF] hover:text-white transition-colors flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">open_in_new</span> Buka</button>
+</div>
+</div>
+</div>
+</section>
+</div>
+</main>
+<!-- Right Panel: NavigationDrawer (AI Assistant) -->
+<aside class="fixed right-0 top-0 h-full flex flex-col z-50 w-80 bg-surface-container-high/85 backdrop-blur-2xl border-l border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] flex-shrink-0">
+<!-- Header -->
+<div class="p-6 border-b border-white/10 flex justify-between items-center bg-gradient-to-r from-transparent to-secondary/5">
+<div>
+<h2 class="font-label-md text-label-md font-semibold text-secondary flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">auto_awesome</span> AI Assistant
+                </h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Luminous Depth Engine</p>
+</div>
+<button class="text-on-surface-variant hover:text-white transition-colors"><span class="material-symbols-outlined">more_vert</span></button>
+</div>
+<!-- Chat Area -->
+<div class="flex-1 overflow-y-auto p-4 space-y-4 flex flex-col">
+<!-- AI Message -->
+<div class="flex items-start gap-3">
+<div class="w-8 h-8 rounded bg-secondary/20 border border-secondary/30 flex items-center justify-center flex-shrink-0 shadow-[0_0_10px_rgba(240,176,255,0.2)]">
+<span class="material-symbols-outlined text-secondary text-[16px]">robot_2</span>
+</div>
+<div class="glass-modal p-3 rounded-tr-xl rounded-b-xl border-[#C678DD]/30 text-sm font-body-sm text-on-surface shadow-[0_0_8px_rgba(198,120,221,0.1)]">
+                    Halo! Saya asisten DeadlineHUB Anda. Berdasarkan jadwal Anda, Anda memiliki <strong>1 tugas mendesak</strong> hari ini.
+                    <ul class="list-disc ml-4 mt-2 space-y-1 text-on-surface-variant">
+<li>Data Structures Final (Sisa &lt; 12 jam)</li>
+</ul>
+                    Apa yang ingin Anda lakukan?
+                </div>
+</div>
+<!-- User Message -->
+<div class="flex items-start gap-3 flex-row-reverse">
+<div class="w-8 h-8 rounded-full overflow-hidden border border-primary/30 flex-shrink-0">
+<img alt="User Avatar" class="w-full h-full object-cover" data-alt="A small generic user avatar silhouette in a dark modern style, subtle blue glow." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC9OA_r91kdzlFtxZNN8mZKSuvc790Hw25tL-Z4TD1lLmr1z-gRbTtOnIVuIJHEpvnp52AvVWqXdLXanRn0QSkUT4K1EADKLJ3Ac95J5S0LrcrYer66v26kmvTp9BDqU3LDdxlN9sCWI9gWYWbWEVgAc_C-_kW5SZERgW9Vpz2tPXxKijAQ0FAwd1hl7Ix5wTVvbsvt6RSyHI_AR-lGInWBleuW1LRaA6oq9CQgycrfasnDUnZFg5MN1RGuguY9nCKkBIF_yg5pess"/>
+</div>
+<div class="bg-primary-container/15 border border-primary/30 p-3 rounded-tl-xl rounded-b-xl text-sm font-body-sm text-on-surface">
+                    Buatkan jadwal belajar untuk besok yang mencakup Physics dan Literature.
+                </div>
+</div>
+<!-- AI Typing Indicator (Simulated) -->
+<div class="flex items-start gap-3">
+<div class="w-8 h-8 rounded bg-secondary/20 border border-secondary/30 flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-secondary text-[16px] animate-pulse">robot_2</span>
+</div>
+<div class="glass-modal px-4 py-3 rounded-tr-xl rounded-b-xl border-[#C678DD]/30 text-sm flex gap-1 items-center">
+<div class="w-1.5 h-1.5 rounded-full bg-secondary/50 animate-bounce"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-secondary/50 animate-bounce" style="animation-delay: 0.2s"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-secondary/50 animate-bounce" style="animation-delay: 0.4s"></div>
+</div>
+</div>
+</div>
+<!-- Input Area -->
+<div class="p-4 border-t border-white/10 bg-surface-container/30">
+<!-- Quick Actions -->
+<div class="flex flex-wrap gap-2 mb-3">
+<button class="px-3 py-1.5 rounded-full border border-white/10 bg-white/5 text-[11px] font-label-md text-on-surface-variant hover:bg-white/10 hover:text-white transition-colors whitespace-nowrap">Apa deadline saya?</button>
+<button class="px-3 py-1.5 rounded-full border border-white/10 bg-white/5 text-[11px] font-label-md text-on-surface-variant hover:bg-white/10 hover:text-white transition-colors whitespace-nowrap">Jadwalkan belajar besok</button>
+</div>
+<div class="relative group">
+<textarea class="w-full bg-[#1E222A]/40 border border-white/10 rounded-xl pl-4 pr-12 py-3 text-sm font-body-sm text-on-surface placeholder-outline-variant focus:border-primary focus:ring-0 focus:outline-none focus:shadow-[inset_0_0_8px_rgba(97,175,239,0.2)] transition-all resize-none h-24" placeholder="Ketik instruksi atau pertanyaan..."></textarea>
+<div class="absolute bottom-3 right-3 flex space-x-2">
+<button class="text-outline hover:text-white transition-colors p-1"><span class="material-symbols-outlined text-[20px]">mic</span></button>
+<button class="bg-gradient-to-r from-primary-container to-secondary text-background rounded p-1 shadow-[0_0_10px_rgba(150,204,255,0.4)] hover:shadow-[0_0_15px_rgba(150,204,255,0.6)] transition-shadow">
+<span class="material-symbols-outlined text-[20px]">send</span>
+</button>
+</div>
+</div>
+<button class="w-full mt-3 py-2 rounded-lg border border-primary/30 text-primary font-label-md text-label-md hover:bg-primary/10 transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[18px]">calendar_add_on</span>
+                Schedule Creator
+            </button>
+</div>
+<!-- Footer -->
+<div class="p-4 border-t border-white/10 flex justify-around">
+<a class="text-on-surface-variant hover:bg-secondary/10 px-4 py-2 rounded-lg transition-colors font-body-sm text-body-sm flex items-center gap-2" href="#">
+<span class="material-symbols-outlined text-[18px]">settings</span> Settings
+            </a>
+<a class="text-on-surface-variant hover:bg-secondary/10 px-4 py-2 rounded-lg transition-colors font-body-sm text-body-sm flex items-center gap-2" href="#">
+<span class="material-symbols-outlined text-[18px]">history</span> History
+            </a>
+</div>
+</aside>
+</body></html>
