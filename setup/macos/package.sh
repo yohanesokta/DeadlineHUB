@@ -55,7 +55,7 @@ cp -R "$APP_PATH" "$DMG_STAGE/"
 ln -s /Applications "$DMG_STAGE/Applications"
 
 # Create the raw writeable DMG disk image
-hdiutil create -srcfolder "$DMG_STAGE" -volname "DeadlineHUB" -fs HFS+ -fsopt "-j" -format UDRW "$TMP_DMG"
+hdiutil create -srcfolder "$DMG_STAGE" -volname "DeadlineHUB" -format UDRW "$TMP_DMG"
 
 # Convert writeable image to a read-only compressed final DMG
 hdiutil convert "$TMP_DMG" -format UDZO -imagekey zlib-level=9 -o "$FINAL_DMG"
