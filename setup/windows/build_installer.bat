@@ -2,14 +2,15 @@
 echo =======================================================
 echo Building Flutter Windows Release...
 echo =======================================================
-cd ..\..
+REM Navigate to the project root relative to this script directory
+cd /d "%~dp0..\.."
 call flutter build windows --release
 
 echo.
 echo =======================================================
 echo Compiling Inno Setup Installer...
 echo =======================================================
-cd setup\windows
+cd /d "%~dp0"
 
 set ISCC="C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
 if not exist %ISCC% set ISCC="C:\Program Files\Inno Setup 6\ISCC.exe"

@@ -15,7 +15,10 @@ NC='\033[0m' # No Color
 echo -e "${BLUE}=======================================================${NC}"
 echo -e "${BLUE}Building Flutter Linux Release...${NC}"
 echo -e "${BLUE}=======================================================${NC}"
-cd ../..
+# Get the absolute path to the project root directory relative to this script
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR/../.."
+
 flutter build linux --release
 
 # Variables

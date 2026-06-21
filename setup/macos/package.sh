@@ -15,7 +15,10 @@ NC='\033[0m'
 echo -e "${BLUE}=======================================================${NC}"
 echo -e "${BLUE}Building Flutter macOS Release...${NC}"
 echo -e "${BLUE}=======================================================${NC}"
-cd ../..
+# Get the absolute path to the project root directory relative to this script
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR/../.."
+
 flutter build macos --release
 
 APP_NAME="deadlinehub"
