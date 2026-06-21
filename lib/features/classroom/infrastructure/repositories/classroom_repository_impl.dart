@@ -133,6 +133,37 @@ class ClassroomRepositoryImpl implements ClassroomRepository {
       .write(const CachedDeadlinesCompanion(isSubmitted: Value(true)));
   }
 
+  @override
+  Future<void> unsubmitAssignment(String courseId, String courseWorkId) async {
+    final client = await _authRepo.getAuthClient();
+    if (client == null) {
+      throw Exception('Authentication required.');
+    }
+
+    final api = classroom.ClassroomApi(client);
+    
+    try {
+      final submissionsRes = await api.courses.courseWork.studentSubmissions.list(courseId, courseWorkId);
+      final submissions = submissionsRes.studentSubmissions ?? [];
+      if (submissions.isNotEmpty && submissions.first.id != null) {
+        final subId = submissions.first.id!;
+        await api.courses.courseWork.studentSubmissions.reclaim(
+          classroom.ReclaimStudentSubmissionRequest(),
+          courseId,
+          courseWorkId,
+          subId,
+        );
+      }
+    } catch (_) {
+      // Ignore API write errors or handle custom exceptions
+    }
+
+    // Always update local database to reflect user intent
+    await (_db.update(_db.cachedDeadlines)
+      ..where((t) => t.id.equals(courseWorkId)))
+      .write(const CachedDeadlinesCompanion(isSubmitted: Value(false)));
+  }
+
   DateTime? _parseDue(classroom.Date? date, classroom.TimeOfDay? time) {
     if (date == null || date.year == null || date.month == null || date.day == null) return null;
     return DateTime(

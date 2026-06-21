@@ -63,17 +63,23 @@ class _ClassroomPageState extends ConsumerState<ClassroomPage> {
       }).toList();
     });
 
-    if (mounted && nextState) {
+    if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('"${ass.title}" ditandai sebagai selesai.'),
+          content: Text(nextState
+              ? '"${ass.title}" ditandai sebagai selesai.'
+              : '"${ass.title}" ditandai sebagai aktif kembali.'),
           duration: const Duration(seconds: 2),
         ),
       );
     }
 
     try {
-      await ref.read(classroomRepositoryProvider).submitAssignment(ass.courseId, ass.id, 'mock_sub_id');
+      if (nextState) {
+        await ref.read(classroomRepositoryProvider).submitAssignment(ass.courseId, ass.id, 'mock_sub_id');
+      } else {
+        await ref.read(classroomRepositoryProvider).unsubmitAssignment(ass.courseId, ass.id);
+      }
     } catch (e) {
       //
     }
@@ -103,72 +109,141 @@ class _ClassroomPageState extends ConsumerState<ClassroomPage> {
     _sortAssignments();
 
     final activeAssignments = _assignments.where((ass) => !ass.isSubmitted).toList();
+    final completedAssignments = _assignments.where((ass) => ass.isSubmitted).toList();
 
-    return Scaffold(
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Filter / Control Bar
-            Row(
-              children: [
-                const Text(
-                  'Sort by:',
-                  style: TextStyle(color: OneDarkTheme.textMain, fontSize: 13),
-                ),
-                const SizedBox(width: 8),
-                DropdownButton<String>(
-                  value: _sortBy,
-                  dropdownColor: OneDarkTheme.cardBg,
-                  underline: const SizedBox(),
-                  style: const TextStyle(color: OneDarkTheme.primary, fontWeight: FontWeight.bold, fontSize: 13),
-                  items: const [
-                    DropdownMenuItem(value: 'deadline', child: Text('Due Date')),
-                    DropdownMenuItem(value: 'course', child: Text('Course Name')),
-                    DropdownMenuItem(value: 'urgency', child: Text('Urgency')),
-                  ],
-                  onChanged: (val) {
-                    if (val != null) {
-                      setState(() => _sortBy = val);
-                    }
-                  },
-                ),
-                const Spacer(),
-                IconButton.filledTonal(
-                  onPressed: () => _loadAssignments(force: true),
-                  icon: const Icon(Icons.sync, size: 16),
-                  style: IconButton.styleFrom(
-                    backgroundColor: OneDarkTheme.border,
-                    foregroundColor: OneDarkTheme.textLight,
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        body: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // TabBar header
+              Container(
+                decoration: const BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(color: OneDarkTheme.border, width: 1),
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 20),
+                child: TabBar(
+                  labelColor: OneDarkTheme.primary,
+                  unselectedLabelColor: OneDarkTheme.textMain,
+                  indicatorColor: OneDarkTheme.primary,
+                  indicatorWeight: 3,
+                  labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.normal, fontSize: 14),
+                  tabs: [
+                    Tab(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.assignment_outlined, size: 16),
+                          const SizedBox(width: 8),
+                          Text('Tugas Aktif (${activeAssignments.length})'),
+                        ],
+                      ),
+                    ),
+                    Tab(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.assignment_turned_in_outlined, size: 16),
+                          const SizedBox(width: 8),
+                          Text('Tugas Selesai (${completedAssignments.length})'),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              
+              // Filter / Control Bar
+              Row(
+                children: [
+                  const Text(
+                    'Sort by:',
+                    style: TextStyle(color: OneDarkTheme.textMain, fontSize: 13),
+                  ),
+                  const SizedBox(width: 8),
+                  DropdownButton<String>(
+                    value: _sortBy,
+                    dropdownColor: OneDarkTheme.cardBg,
+                    underline: const SizedBox(),
+                    style: const TextStyle(color: OneDarkTheme.primary, fontWeight: FontWeight.bold, fontSize: 13),
+                    items: const [
+                      DropdownMenuItem(value: 'deadline', child: Text('Due Date')),
+                      DropdownMenuItem(value: 'course', child: Text('Course Name')),
+                      DropdownMenuItem(value: 'urgency', child: Text('Urgency')),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) {
+                        setState(() => _sortBy = val);
+                      }
+                    },
+                  ),
+                  const Spacer(),
+                  IconButton.filledTonal(
+                    onPressed: () => _loadAssignments(force: true),
+                    icon: const Icon(Icons.sync, size: 16),
+                    style: IconButton.styleFrom(
+                      backgroundColor: OneDarkTheme.border,
+                      foregroundColor: OneDarkTheme.textLight,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
 
-            Expanded(
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator(color: OneDarkTheme.primary))
-                  : activeAssignments.isEmpty
-                      ? const Center(
-                          child: Text(
-                            'No classroom assignments available.',
-                            style: TextStyle(color: OneDarkTheme.textMain, fontSize: 13),
-                          ),
-                        )
-                      : ListView.builder(
-                          itemCount: activeAssignments.length,
-                          itemBuilder: (context, index) {
-                            final ass = activeAssignments[index];
-                            return _AssignmentCard(
-                              assignment: ass,
-                              onToggle: () => _toggleSubmitted(ass),
-                            );
-                          },
-                        ),
-            ),
-          ],
+              Expanded(
+                child: TabBarView(
+                  children: [
+                    // Tab 1: Tugas Aktif
+                    _isLoading
+                        ? const Center(child: CircularProgressIndicator(color: OneDarkTheme.primary))
+                        : activeAssignments.isEmpty
+                            ? const Center(
+                                child: Text(
+                                  'Tidak ada tugas aktif.',
+                                  style: TextStyle(color: OneDarkTheme.textMain, fontSize: 13),
+                                ),
+                              )
+                            : ListView.builder(
+                                itemCount: activeAssignments.length,
+                                itemBuilder: (context, index) {
+                                  final ass = activeAssignments[index];
+                                  return _AssignmentCard(
+                                    assignment: ass,
+                                    onToggle: () => _toggleSubmitted(ass),
+                                  );
+                                },
+                              ),
+                    // Tab 2: Tugas Selesai
+                    _isLoading
+                        ? const Center(child: CircularProgressIndicator(color: OneDarkTheme.primary))
+                        : completedAssignments.isEmpty
+                            ? const Center(
+                                child: Text(
+                                  'Tidak ada tugas yang ditandai selesai.',
+                                  style: TextStyle(color: OneDarkTheme.textMain, fontSize: 13),
+                                ),
+                              )
+                            : ListView.builder(
+                                itemCount: completedAssignments.length,
+                                itemBuilder: (context, index) {
+                                  final ass = completedAssignments[index];
+                                  return _AssignmentCard(
+                                    assignment: ass,
+                                    onToggle: () => _toggleSubmitted(ass),
+                                  );
+                                },
+                              ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -203,8 +278,8 @@ class _AssignmentCard extends StatelessWidget {
           children: [
             Text(
               '[${assignment.courseName}]',
-              style: const TextStyle(
-                color: OneDarkTheme.primary,
+              style: TextStyle(
+                color: assignment.isSubmitted ? OneDarkTheme.primary.withOpacity(0.5) : OneDarkTheme.primary,
                 fontWeight: FontWeight.bold,
                 fontSize: 12.5,
               ),
@@ -213,10 +288,11 @@ class _AssignmentCard extends StatelessWidget {
             Expanded(
               child: Text(
                 assignment.title,
-                style: const TextStyle(
-                  color: OneDarkTheme.textLight,
+                style: TextStyle(
+                  color: assignment.isSubmitted ? OneDarkTheme.textDark : OneDarkTheme.textLight,
                   fontWeight: FontWeight.bold,
                   fontSize: 13.5,
+                  decoration: assignment.isSubmitted ? TextDecoration.lineThrough : null,
                 ),
               ),
             ),
@@ -232,7 +308,10 @@ class _AssignmentCard extends StatelessWidget {
                   assignment.description!,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: OneDarkTheme.textMain, fontSize: 12),
+                  style: TextStyle(
+                    color: assignment.isSubmitted ? OneDarkTheme.textDark : OneDarkTheme.textMain, 
+                    fontSize: 12
+                  ),
                 ),
                 const SizedBox(height: 4),
               ],
@@ -269,10 +348,10 @@ class _AssignmentCard extends StatelessWidget {
           children: [
             TextButton(
               onPressed: onToggle,
-              child: const Text(
-                'Selesai',
+              child: Text(
+                assignment.isSubmitted ? 'Batalkan' : 'Selesai',
                 style: TextStyle(
-                  color: OneDarkTheme.success,
+                  color: assignment.isSubmitted ? OneDarkTheme.error : OneDarkTheme.success,
                   fontWeight: FontWeight.bold,
                   fontSize: 12,
                 ),

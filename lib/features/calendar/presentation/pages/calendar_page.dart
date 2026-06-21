@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:deadlinehub/core/theme/theme.dart';
 import 'package:deadlinehub/core/providers/providers.dart';
 import 'package:deadlinehub/features/calendar/domain/entities/calendar_event.dart';
@@ -17,6 +18,7 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
   List<CalendarEvent> _draftEvents = [];
   bool _isLoadingEvents = true;
   bool _isGeneratingDraft = false;
+  DateTime _focusedDate = DateTime.now();
 
   @override
   void initState() {
@@ -238,15 +240,249 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
     );
   }
 
+  DateTime get _startOfWeek {
+    final dayOffset = _focusedDate.weekday - 1;
+    final monday = _focusedDate.subtract(Duration(days: dayOffset));
+    return DateTime(monday.year, monday.month, monday.day);
+  }
+
+  List<DateTime> get _weekDates {
+    final start = _startOfWeek;
+    return List.generate(7, (i) => start.add(Duration(days: i)));
+  }
+
+  String _getMonthName(int month) {
+    const names = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    return names[month - 1];
+  }
+
+  void _showEventDetailsDialog(CalendarEvent event) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        final startTimeStr = event.startTime.toLocal().toString().split('.')[0];
+        final endTimeStr = event.endTime.toLocal().toString().split('.')[0];
+        final meetLink = event.meetLink;
+
+        return AlertDialog(
+          backgroundColor: OneDarkTheme.surface,
+          title: Text(event.title, style: const TextStyle(color: OneDarkTheme.textLight)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.access_time, size: 16, color: OneDarkTheme.primary),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '$startTimeStr - $endTimeStr',
+                      style: const TextStyle(color: OneDarkTheme.textLight, fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              if (event.description.isNotEmpty) ...[
+                const Text('Description:', style: TextStyle(color: OneDarkTheme.textDark, fontSize: 11, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                Text(event.description, style: const TextStyle(color: OneDarkTheme.textMain, fontSize: 13)),
+                const SizedBox(height: 16),
+              ],
+              if (meetLink != null && meetLink.isNotEmpty) ...[
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: OneDarkTheme.cyan,
+                    foregroundColor: Colors.black,
+                  ),
+                  onPressed: () async {
+                    final uri = Uri.parse(meetLink);
+                    if (await canLaunchUrl(uri)) {
+                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                    }
+                  },
+                  icon: const Icon(Icons.video_call),
+                  label: const Text('Join Google Meet'),
+                ),
+                const SizedBox(height: 16),
+              ],
+            ],
+          ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.edit, color: OneDarkTheme.primary),
+              onPressed: () {
+                Navigator.of(context).pop();
+                _showEditEventDialog(
+                  context: context,
+                  event: event,
+                  onSave: (edited) async {
+                    try {
+                      await ref.read(calendarRepositoryProvider).updateEvent(edited);
+                      _loadEvents();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Event updated successfully!')),
+                      );
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Failed to update event: $e')),
+                      );
+                    }
+                  },
+                );
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete_outline, color: OneDarkTheme.error),
+              onPressed: () async {
+                Navigator.of(context).pop();
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    backgroundColor: OneDarkTheme.surface,
+                    title: const Text('Delete Event', style: TextStyle(color: OneDarkTheme.textLight)),
+                    content: const Text(
+                      'Are you sure you want to delete this event from Google Calendar?',
+                      style: TextStyle(color: OneDarkTheme.textMain),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(false),
+                        child: const Text('Cancel', style: TextStyle(color: OneDarkTheme.textDark)),
+                      ),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(backgroundColor: OneDarkTheme.error),
+                        onPressed: () => Navigator.of(context).pop(true),
+                        child: const Text('Delete', style: TextStyle(color: Colors.white)),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirm == true) {
+                  try {
+                    await ref.read(calendarRepositoryProvider).deleteEvent(event.id);
+                    _loadEvents();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Event deleted successfully!')),
+                    );
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Failed to delete event: $e')),
+                    );
+                  }
+                }
+              },
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close', style: TextStyle(color: OneDarkTheme.textDark)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildEventCard(CalendarEvent event) {
+    double startHour = event.startTime.hour + (event.startTime.minute / 60.0);
+    double endHour = event.endTime.hour + (event.endTime.minute / 60.0);
+
+    // Clamp values to active hours (07:00 to 23:00)
+    if (startHour < 7.0) startHour = 7.0;
+    if (endHour > 23.0) endHour = 23.0;
+    if (endHour <= startHour) return const SizedBox.shrink();
+
+    final topOffset = (startHour - 7.0) * 60.0;
+    final heightOffset = (endHour - startHour) * 60.0;
+
+    Color eventColor = OneDarkTheme.primary;
+    if (event.meetLink != null && event.meetLink!.isNotEmpty) {
+      eventColor = OneDarkTheme.cyan;
+    } else if (event.title.toLowerCase().contains('classroom') ||
+               event.title.toLowerCase().contains('deadline') ||
+               event.title.toLowerCase().contains('tugas')) {
+      eventColor = const Color(0xFFC678DD); // Purple/Magenta
+    } else if (event.title.toLowerCase().contains('exam') ||
+               event.title.toLowerCase().contains('quiz') ||
+               event.title.toLowerCase().contains('uas') ||
+               event.title.toLowerCase().contains('uts')) {
+      eventColor = OneDarkTheme.error; // Red
+    }
+
+    return Positioned(
+      top: topOffset + 2,
+      height: heightOffset - 4,
+      left: 4,
+      right: 4,
+      child: GestureDetector(
+        onTap: () => _showEventDetailsDialog(event),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          decoration: BoxDecoration(
+            color: eventColor.withOpacity(0.15),
+            border: Border(
+              left: BorderSide(color: eventColor, width: 3),
+            ),
+            borderRadius: const BorderRadius.only(
+              topRight: Radius.circular(6),
+              bottomRight: Radius.circular(6),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                event.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: OneDarkTheme.textLight,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 11,
+                ),
+              ),
+              if (heightOffset > 35) ...[
+                const SizedBox(height: 2),
+                Expanded(
+                  child: Text(
+                    event.description,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: OneDarkTheme.textMain,
+                      fontSize: 9,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final start = _startOfWeek;
+    final end = start.add(const Duration(days: 6));
+    String dateRangeStr = '${_getMonthName(start.month)} ${start.year}';
+    if (start.year != end.year) {
+      dateRangeStr = '${_getMonthName(start.month)} ${start.year} - ${_getMonthName(end.month)} ${end.year}';
+    } else if (start.month != end.month) {
+      dateRangeStr = '${_getMonthName(start.month)} - ${_getMonthName(end.month)} ${start.year}';
+    }
 
     return Scaffold(
       body: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Left: Existing Calendar Schedule
+          // Left: Weekly Planner Canvas
           Expanded(
             flex: 3,
             child: Padding(
@@ -254,91 +490,177 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Weekly Planner', style: theme.textTheme.titleMedium),
+                  Row(
+                    children: [
+                      Text(dateRangeStr, style: theme.textTheme.titleMedium),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.chevron_left, color: OneDarkTheme.textLight),
+                        onPressed: () {
+                          setState(() {
+                            _focusedDate = _focusedDate.subtract(const Duration(days: 7));
+                          });
+                        },
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          setState(() {
+                            _focusedDate = DateTime.now();
+                          });
+                        },
+                        child: const Text(
+                          'Today',
+                          style: TextStyle(
+                            color: OneDarkTheme.primary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.chevron_right, color: OneDarkTheme.textLight),
+                        onPressed: () {
+                          setState(() {
+                            _focusedDate = _focusedDate.add(const Duration(days: 7));
+                          });
+                        },
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 16),
+                  
+                  // Canvas Day Headers
+                  Row(
+                    children: [
+                      const SizedBox(width: 50), // Spacing for time labels
+                      ...List.generate(7, (dayIndex) {
+                        final dayDate = _weekDates[dayIndex];
+                        final isToday = DateUtils.isSameDay(dayDate, DateTime.now());
+                        final weekdayStr = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'][dayIndex];
+                        
+                        return Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: isToday ? OneDarkTheme.primary.withOpacity(0.05) : Colors.transparent,
+                              border: Border(
+                                bottom: BorderSide(
+                                  color: isToday ? OneDarkTheme.primary : OneDarkTheme.border,
+                                  width: isToday ? 2 : 1,
+                                ),
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                Text(
+                                  weekdayStr,
+                                  style: TextStyle(
+                                    color: isToday ? OneDarkTheme.primary : OneDarkTheme.textDark,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: isToday ? OneDarkTheme.primary : Colors.transparent,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Text(
+                                    '${dayDate.day}',
+                                    style: TextStyle(
+                                      color: isToday ? Colors.white : OneDarkTheme.textLight,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }),
+                    ],
+                  ),
+                  
+                  // Canvas Grid Area
                   Expanded(
                     child: _isLoadingEvents
                         ? const Center(child: CircularProgressIndicator(color: OneDarkTheme.primary))
-                        : _events.isEmpty
-                            ? const Center(
-                                child: Text(
-                                  'No calendar events available.',
-                                  style: TextStyle(color: OneDarkTheme.textMain, fontSize: 13),
-                                ),
-                              )
-                            : ListView.builder(
-                                itemCount: _events.length,
-                                itemBuilder: (context, index) {
-                                  final event = _events[index];
-                                  return _EventListItem(
-                                    event: event,
-                                    onEdit: () {
-                                      _showEditEventDialog(
-                                        context: context,
-                                        event: event,
-                                        onSave: (edited) async {
-                                          try {
-                                            await ref.read(calendarRepositoryProvider).updateEvent(edited);
-                                            _loadEvents();
-                                            if (context.mounted) {
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                const SnackBar(content: Text('Event updated successfully!')),
-                                              );
-                                            }
-                                          } catch (e) {
-                                            if (context.mounted) {
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                SnackBar(content: Text('Failed to update event: $e')),
-                                              );
-                                            }
-                                          }
-                                        },
-                                      );
-                                    },
-                                    onDelete: () async {
-                                      final confirm = await showDialog<bool>(
-                                        context: context,
-                                        builder: (context) => AlertDialog(
-                                          backgroundColor: OneDarkTheme.surface,
-                                          title: const Text('Delete Event', style: TextStyle(color: OneDarkTheme.textLight)),
-                                          content: const Text(
-                                            'Are you sure you want to delete this event from Google Calendar?',
-                                            style: TextStyle(color: OneDarkTheme.textMain),
-                                          ),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () => Navigator.of(context).pop(false),
-                                              child: const Text('Cancel', style: TextStyle(color: OneDarkTheme.textDark)),
-                                            ),
-                                            ElevatedButton(
-                                              style: ElevatedButton.styleFrom(backgroundColor: OneDarkTheme.error),
-                                              onPressed: () => Navigator.of(context).pop(true),
-                                              child: const Text('Delete', style: TextStyle(color: Colors.white)),
-                                            ),
-                                          ],
+                        : SingleChildScrollView(
+                            child: Stack(
+                              children: [
+                                // Background Hour Rows Grid
+                                Column(
+                                  children: List.generate(16, (hourIndex) {
+                                    final hour = 7 + hourIndex;
+                                    return Container(
+                                      height: 60,
+                                      decoration: const BoxDecoration(
+                                        border: Border(
+                                          bottom: BorderSide(color: OneDarkTheme.border, width: 0.5),
                                         ),
-                                      );
-                                      if (confirm == true) {
-                                        try {
-                                          await ref.read(calendarRepositoryProvider).deleteEvent(event.id);
-                                          _loadEvents();
-                                          if (context.mounted) {
-                                            ScaffoldMessenger.of(context).showSnackBar(
-                                              const SnackBar(content: Text('Event deleted successfully!')),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Container(
+                                            width: 50,
+                                            alignment: Alignment.topRight,
+                                            padding: const EdgeInsets.only(right: 8, top: 4),
+                                            child: Text(
+                                              '${hour.toString().padLeft(2, '0')}:00',
+                                              style: const TextStyle(color: OneDarkTheme.textDark, fontSize: 10),
+                                            ),
+                                          ),
+                                          ...List.generate(7, (dayIndex) {
+                                            return Expanded(
+                                              child: Container(
+                                                decoration: const BoxDecoration(
+                                                  border: Border(
+                                                    left: BorderSide(color: OneDarkTheme.border, width: 0.5),
+                                                  ),
+                                                ),
+                                              ),
                                             );
-                                          }
-                                        } catch (e) {
-                                          if (context.mounted) {
-                                            ScaffoldMessenger.of(context).showSnackBar(
-                                              SnackBar(content: Text('Failed to delete event: $e')),
-                                            );
-                                          }
-                                        }
-                                      }
-                                    },
-                                  );
-                                },
-                              ),
+                                          }),
+                                        ],
+                                      ),
+                                    );
+                                  }),
+                                ),
+                                
+                                // Overlay Events Placement Grid
+                                Positioned.fill(
+                                  child: Row(
+                                    children: [
+                                      const SizedBox(width: 50),
+                                      ...List.generate(7, (dayIndex) {
+                                        final dayDate = _weekDates[dayIndex];
+                                        final dayEvents = _events.where((e) {
+                                          return e.startTime.year == dayDate.year &&
+                                                 e.startTime.month == dayDate.month &&
+                                                 e.startTime.day == dayDate.day;
+                                        }).toList();
+
+                                        return Expanded(
+                                          child: Container(
+                                            color: Colors.transparent,
+                                            child: Stack(
+                                              clipBehavior: Clip.none,
+                                              children: dayEvents.map((event) {
+                                                return _buildEventCard(event);
+                                              }).toList(),
+                                            ),
+                                          ),
+                                        );
+                                      }),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                   ),
                 ],
               ),
@@ -489,127 +811,6 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
               ),
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _EventListItem extends StatelessWidget {
-  final CalendarEvent event;
-  final VoidCallback? onEdit;
-  final VoidCallback? onDelete;
-
-  const _EventListItem({
-    required this.event,
-    this.onEdit,
-    this.onDelete,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final startTimeStr = '${event.startTime.hour.toString().padLeft(2, '0')}:${event.startTime.minute.toString().padLeft(2, '0')}';
-    final endTimeStr = '${event.endTime.hour.toString().padLeft(2, '0')}:${event.endTime.minute.toString().padLeft(2, '0')}';
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: OneDarkTheme.cardBg,
-        border: Border.all(color: OneDarkTheme.border),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Time details box
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: OneDarkTheme.primary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Column(
-              children: [
-                Text(
-                  event.isAllDay ? 'ALL DAY' : startTimeStr,
-                  style: const TextStyle(color: OneDarkTheme.primary, fontWeight: FontWeight.bold, fontSize: 12),
-                ),
-                if (!event.isAllDay) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    endTimeStr,
-                    style: const TextStyle(color: OneDarkTheme.textMain, fontSize: 11),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(width: 16),
-          // Event Title & Details
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  event.title,
-                  style: const TextStyle(color: OneDarkTheme.textLight, fontWeight: FontWeight.bold, fontSize: 14),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  event.description,
-                  style: const TextStyle(color: OneDarkTheme.textMain, fontSize: 12),
-                ),
-                if (event.meetLink != null) ...[
-                  const SizedBox(height: 8),
-                  InkWell(
-                    onTap: () {},
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: OneDarkTheme.cyan.withOpacity(0.15),
-                        border: Border.all(color: OneDarkTheme.cyan.withOpacity(0.4)),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.video_call, color: OneDarkTheme.cyan, size: 14),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Join Google Meet',
-                            style: TextStyle(color: OneDarkTheme.cyan.withOpacity(0.9), fontSize: 11, fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ]
-              ],
-            ),
-          ),
-          if (onEdit != null || onDelete != null) ...[
-            const SizedBox(width: 16),
-            Column(
-              children: [
-                if (onEdit != null)
-                  IconButton(
-                    icon: const Icon(Icons.edit, size: 16, color: OneDarkTheme.primary),
-                    onPressed: onEdit,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                if (onEdit != null && onDelete != null) const SizedBox(height: 12),
-                if (onDelete != null)
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline, size: 16, color: OneDarkTheme.error),
-                    onPressed: onDelete,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-              ],
-            ),
-          ],
         ],
       ),
     );

@@ -39,6 +39,11 @@ class AIRepositoryImpl implements AIRepository {
   @override
   Stream<List<AiTaskEvent>> get taskEvents => _taskEventsController.stream;
 
+  @override
+  void logActivity(String taskId, String title, TaskState state, {String? error}) {
+    _addOrUpdateTask(taskId, title, state, error: error);
+  }
+
   void _addOrUpdateTask(String taskId, String title, TaskState state, {String? error}) {
     final index = _activeTasks.indexWhere((t) => t.taskId == taskId);
     if (index >= 0) {

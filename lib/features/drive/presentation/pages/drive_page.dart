@@ -176,6 +176,26 @@ class _FileGridItem extends StatelessWidget {
       if (mime.contains('presentation') || mime.contains('slide') || mime.contains('powerpoint')) {
         return 'assets/icons/file_slide.svg';
       }
+      if (mime.contains('zip') ||
+          mime.contains('compressed') ||
+          mime.contains('archive') ||
+          mime.contains('tar') ||
+          file.name.endsWith('.zip') ||
+          file.name.endsWith('.rar') ||
+          file.name.endsWith('.tar') ||
+          file.name.endsWith('.7z') ||
+          file.name.endsWith('.gz')) {
+        return 'assets/icons/file_archive.svg';
+      }
+      if (mime.contains('x-msdownload') ||
+          mime.contains('x-sh') ||
+          mime.contains('x-executable') ||
+          file.name.endsWith('.exe') ||
+          file.name.endsWith('.sh') ||
+          file.name.endsWith('.bat') ||
+          file.name.endsWith('.bin')) {
+        return 'assets/icons/file_executable.svg';
+      }
       if (mime.startsWith('image/')) {
         return 'assets/icons/file_image.svg';
       }

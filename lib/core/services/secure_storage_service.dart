@@ -78,6 +78,16 @@ class SecureStorageService {
     return await _storage.read(key: _userPictureKey);
   }
 
+  Future<void> saveLastFetchTime(DateTime time) async {
+    await _storage.write(key: 'last_insights_fetch_time', value: time.toIso8601String());
+  }
+
+  Future<DateTime?> getLastFetchTime() async {
+    final val = await _storage.read(key: 'last_insights_fetch_time');
+    if (val == null) return null;
+    return DateTime.tryParse(val);
+  }
+
   Future<void> clearAll() async {
     await _storage.delete(key: _accessTokenKey);
     await _storage.delete(key: _refreshTokenKey);
@@ -87,5 +97,6 @@ class SecureStorageService {
     await _storage.delete(key: _userNameKey);
     await _storage.delete(key: _userEmailKey);
     await _storage.delete(key: _userPictureKey);
+    await _storage.delete(key: 'last_insights_fetch_time');
   }
 }

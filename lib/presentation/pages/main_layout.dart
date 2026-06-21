@@ -81,7 +81,10 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
     final theme = Theme.of(context);
     final profileAsync = ref.watch(userProfileProvider);
 
-    ref.listen<AsyncValue<List<AiTaskEvent>>>(aiTaskEventsProvider, (previous, next) {
+    ref.listen<AsyncValue<List<AiTaskEvent>>>(aiTaskEventsProvider, (
+      previous,
+      next,
+    ) {
       next.whenData((tasks) {
         if (tasks.isNotEmpty && tasks.length != _lastTasks.length) {
           setState(() {
@@ -105,7 +108,10 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
               children: [
                 // Header / App Title
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 24,
+                  ),
                   child: Row(
                     children: [
                       Container(
@@ -118,7 +124,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
                       ),
                       const SizedBox(width: 8),
                       const Text(
-                        'DeadlineAI',
+                        'Deadline HUB',
                         style: TextStyle(
                           color: OneDarkTheme.textLight,
                           fontWeight: FontWeight.bold,
@@ -197,11 +203,18 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
                           CircleAvatar(
                             radius: 16,
                             backgroundColor: OneDarkTheme.border,
-                            backgroundImage: hasPicture ? NetworkImage(picture) : null,
+                            backgroundImage: hasPicture
+                                ? NetworkImage(picture)
+                                : null,
                             child: !hasPicture
                                 ? Text(
-                                    name.isNotEmpty ? name[0].toUpperCase() : 'S',
-                                    style: const TextStyle(color: OneDarkTheme.primary, fontWeight: FontWeight.bold),
+                                    name.isNotEmpty
+                                        ? name[0].toUpperCase()
+                                        : 'S',
+                                    style: const TextStyle(
+                                      color: OneDarkTheme.primary,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   )
                                 : null,
                           ),
@@ -212,19 +225,30 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
                               children: [
                                 Text(
                                   name,
-                                  style: const TextStyle(color: OneDarkTheme.textLight, fontSize: 13, fontWeight: FontWeight.bold),
+                                  style: const TextStyle(
+                                    color: OneDarkTheme.textLight,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
                                 Text(
                                   email,
-                                  style: const TextStyle(color: OneDarkTheme.textDark, fontSize: 11),
+                                  style: const TextStyle(
+                                    color: OneDarkTheme.textDark,
+                                    fontSize: 11,
+                                  ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ],
                             ),
                           ),
                           IconButton(
-                            icon: const Icon(Icons.logout, size: 16, color: OneDarkTheme.textMain),
+                            icon: const Icon(
+                              Icons.logout,
+                              size: 16,
+                              color: OneDarkTheme.textMain,
+                            ),
                             onPressed: () {
                               ref.read(authRepositoryProvider).signOut();
                             },
@@ -237,17 +261,36 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
                         SizedBox(
                           width: 16,
                           height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: OneDarkTheme.primary),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: OneDarkTheme.primary,
+                          ),
                         ),
                         SizedBox(width: 12),
-                        Text('Loading profile...', style: TextStyle(color: OneDarkTheme.textDark, fontSize: 11)),
+                        Text(
+                          'Loading profile...',
+                          style: TextStyle(
+                            color: OneDarkTheme.textDark,
+                            fontSize: 11,
+                          ),
+                        ),
                       ],
                     ),
                     error: (err, stack) => Row(
                       children: const [
-                        Icon(Icons.error_outline, color: OneDarkTheme.error, size: 16),
+                        Icon(
+                          Icons.error_outline,
+                          color: OneDarkTheme.error,
+                          size: 16,
+                        ),
                         SizedBox(width: 12),
-                        Text('Error loading profile', style: TextStyle(color: OneDarkTheme.error, fontSize: 11)),
+                        Text(
+                          'Error loading profile',
+                          style: TextStyle(
+                            color: OneDarkTheme.error,
+                            fontSize: 11,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -255,7 +298,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
               ],
             ),
           ),
-          
+
           // Vertical divider
           const VerticalDivider(),
 
@@ -279,7 +322,9 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
                         if (selectedIndex != 1)
                           IconButton(
                             icon: Icon(
-                              _rightPanelExpanded ? Icons.splitscreen : Icons.splitscreen_outlined,
+                              _rightPanelExpanded
+                                  ? Icons.splitscreen
+                                  : Icons.splitscreen_outlined,
                               size: 20,
                               color: OneDarkTheme.textMain,
                             ),
@@ -295,25 +340,28 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
                   const Divider(),
 
                   // Sub-page Content
-                  Expanded(
-                    child: widget.child,
-                  ),
+                  Expanded(child: widget.child),
 
                   // Bottom Global Log Box
                   Consumer(
                     builder: (context, ref, child) {
                       if (!_logVisible) return const SizedBox.shrink();
-                      final events = ref.watch(aiTaskEventsProvider).value ?? [];
+                      final events =
+                          ref.watch(aiTaskEventsProvider).value ?? [];
                       if (events.isEmpty) return const SizedBox.shrink();
                       return Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           const Divider(),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
                             color: OneDarkTheme.cardBg,
                             child: _AiTaskTimeline(
-                              onClose: () => setState(() => _logVisible = false),
+                              onClose: () =>
+                                  setState(() => _logVisible = false),
                             ),
                           ),
                         ],
@@ -329,7 +377,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
           if (_rightPanelExpanded && selectedIndex != 1) ...[
             const VerticalDivider(),
             const _RightAiAssistantPanel(),
-          ]
+          ],
         ],
       ),
     );
@@ -352,7 +400,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
       case 6:
         return 'Preferences & API Keys';
       default:
-        return 'DeadlineAI';
+        return 'Deadline HUB';
     }
   }
 }
@@ -375,7 +423,9 @@ class _SidebarItem extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 4),
       decoration: BoxDecoration(
-        color: isSelected ? OneDarkTheme.primary.withOpacity(0.08) : Colors.transparent,
+        color: isSelected
+            ? OneDarkTheme.primary.withOpacity(0.08)
+            : Colors.transparent,
         borderRadius: BorderRadius.circular(8),
       ),
       child: ClipRRect(
@@ -385,7 +435,9 @@ class _SidebarItem extends StatelessWidget {
             ListTile(
               onTap: onTap,
               dense: true,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
               leading: SvgPicture.asset(
                 iconPath,
                 width: 18,
@@ -398,7 +450,9 @@ class _SidebarItem extends StatelessWidget {
               title: Text(
                 label,
                 style: TextStyle(
-                  color: isSelected ? OneDarkTheme.textLight : OneDarkTheme.textMain,
+                  color: isSelected
+                      ? OneDarkTheme.textLight
+                      : OneDarkTheme.textMain,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                   fontSize: 13,
                 ),
@@ -410,9 +464,7 @@ class _SidebarItem extends StatelessWidget {
                 top: 0,
                 bottom: 0,
                 width: 3,
-                child: Container(
-                  color: OneDarkTheme.primary,
-                ),
+                child: Container(color: OneDarkTheme.primary),
               ),
           ],
         ),
@@ -425,10 +477,12 @@ class _IntegrationStatusCenter extends ConsumerStatefulWidget {
   const _IntegrationStatusCenter();
 
   @override
-  ConsumerState<_IntegrationStatusCenter> createState() => _IntegrationStatusCenterState();
+  ConsumerState<_IntegrationStatusCenter> createState() =>
+      _IntegrationStatusCenterState();
 }
 
-class _IntegrationStatusCenterState extends ConsumerState<_IntegrationStatusCenter> {
+class _IntegrationStatusCenterState
+    extends ConsumerState<_IntegrationStatusCenter> {
   Timer? _timer;
 
   @override
@@ -480,22 +534,26 @@ class _IntegrationStatusCenterState extends ConsumerState<_IntegrationStatusCent
                 _buildSyncTile(
                   label: 'Calendar',
                   status: status.calendar,
-                  retryCallback: () => ref.read(syncCoordinatorProvider).syncCalendar(),
+                  retryCallback: () =>
+                      ref.read(syncCoordinatorProvider).syncCalendar(),
                 ),
                 _buildSyncTile(
                   label: 'Drive',
                   status: status.drive,
-                  retryCallback: () => ref.read(syncCoordinatorProvider).syncDrive(),
+                  retryCallback: () =>
+                      ref.read(syncCoordinatorProvider).syncDrive(),
                 ),
                 _buildSyncTile(
                   label: 'Classroom',
                   status: status.classroom,
-                  retryCallback: () => ref.read(syncCoordinatorProvider).syncClassroom(),
+                  retryCallback: () =>
+                      ref.read(syncCoordinatorProvider).syncClassroom(),
                 ),
                 _buildSyncTile(
                   label: 'Gmail',
                   status: status.gmail,
-                  retryCallback: () => ref.read(syncCoordinatorProvider).syncGmail(),
+                  retryCallback: () =>
+                      ref.read(syncCoordinatorProvider).syncGmail(),
                 ),
               ],
             );
@@ -506,7 +564,10 @@ class _IntegrationStatusCenterState extends ConsumerState<_IntegrationStatusCent
               child: SizedBox(
                 width: 16,
                 height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2, color: OneDarkTheme.primary),
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: OneDarkTheme.primary,
+                ),
               ),
             ),
           ),
@@ -576,8 +637,8 @@ class _IntegrationStatusCenterState extends ConsumerState<_IntegrationStatusCent
                   color: status.state == SyncState.syncing
                       ? OneDarkTheme.primary
                       : status.state == SyncState.failed
-                          ? OneDarkTheme.error
-                          : OneDarkTheme.success,
+                      ? OneDarkTheme.error
+                      : OneDarkTheme.success,
                   shape: BoxShape.circle,
                 ),
               ),
@@ -594,13 +655,7 @@ class _IntegrationStatusCenterState extends ConsumerState<_IntegrationStatusCent
           ),
           Row(
             children: [
-              Text(
-                stateText,
-                style: TextStyle(
-                  color: textColor,
-                  fontSize: 11,
-                ),
-              ),
+              Text(stateText, style: TextStyle(color: textColor, fontSize: 11)),
               if (actionWidget != null) ...[
                 const SizedBox(width: 8),
                 actionWidget,
@@ -646,7 +701,11 @@ class _AiTaskTimeline extends ConsumerWidget {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close, size: 14, color: OneDarkTheme.textDark),
+                    icon: const Icon(
+                      Icons.close,
+                      size: 14,
+                      color: OneDarkTheme.textDark,
+                    ),
                     onPressed: onClose,
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
@@ -679,7 +738,10 @@ class _AiTaskTimeline extends ConsumerWidget {
                 }
 
                 return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   child: Row(
                     children: [
                       if (task.state == TaskState.running)
@@ -731,10 +793,12 @@ class _RightAiAssistantPanel extends ConsumerStatefulWidget {
   const _RightAiAssistantPanel();
 
   @override
-  ConsumerState<_RightAiAssistantPanel> createState() => _RightAiAssistantPanelState();
+  ConsumerState<_RightAiAssistantPanel> createState() =>
+      _RightAiAssistantPanelState();
 }
 
-class _RightAiAssistantPanelState extends ConsumerState<_RightAiAssistantPanel> {
+class _RightAiAssistantPanelState
+    extends ConsumerState<_RightAiAssistantPanel> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   bool _isLoading = false;
@@ -796,7 +860,11 @@ class _RightAiAssistantPanelState extends ConsumerState<_RightAiAssistantPanel> 
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.delete_sweep_outlined, color: OneDarkTheme.error, size: 18),
+                  icon: const Icon(
+                    Icons.delete_sweep_outlined,
+                    color: OneDarkTheme.error,
+                    size: 18,
+                  ),
                   tooltip: 'Clear History',
                   onPressed: () {
                     ref.read(aiRepositoryProvider).clearHistory();
@@ -805,24 +873,29 @@ class _RightAiAssistantPanelState extends ConsumerState<_RightAiAssistantPanel> 
               ],
             ),
           ),
-          
+
           const Divider(),
 
           // Chat Messages
           Expanded(
             child: StreamBuilder<List<Chat>>(
-              stream: (db.select(db.chats)
-                    ..orderBy([(t) => OrderingTerm(expression: t.timestamp)]))
-                  .watch(),
+              stream:
+                  (db.select(db.chats)..orderBy([
+                        (t) => OrderingTerm(expression: t.timestamp),
+                      ]))
+                      .watch(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(
-                    child: CircularProgressIndicator(strokeWidth: 2, color: OneDarkTheme.primary),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: OneDarkTheme.primary,
+                    ),
                   );
                 }
 
                 final messages = snapshot.data ?? [];
-                
+
                 if (messages.isEmpty) {
                   return const Center(
                     child: Padding(
@@ -830,17 +903,25 @@ class _RightAiAssistantPanelState extends ConsumerState<_RightAiAssistantPanel> 
                       child: Text(
                         'Tanya saya tentang deadline, jadwal kuliah, atau file Drive Anda.',
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: OneDarkTheme.textDark, fontSize: 13),
+                        style: TextStyle(
+                          color: OneDarkTheme.textDark,
+                          fontSize: 13,
+                        ),
                       ),
                     ),
                   );
                 }
 
-                WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+                WidgetsBinding.instance.addPostFrameCallback(
+                  (_) => _scrollToBottom(),
+                );
 
                 return ListView.builder(
                   controller: _scrollController,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   itemCount: messages.length + (_isLoading ? 1 : 0),
                   itemBuilder: (context, index) {
                     if (index == messages.length) {
@@ -851,7 +932,10 @@ class _RightAiAssistantPanelState extends ConsumerState<_RightAiAssistantPanel> 
                           child: SizedBox(
                             width: 16,
                             height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: OneDarkTheme.primary),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: OneDarkTheme.primary,
+                            ),
                           ),
                         ),
                       );
@@ -860,15 +944,21 @@ class _RightAiAssistantPanelState extends ConsumerState<_RightAiAssistantPanel> 
                     final isUser = msg.role == 'user';
 
                     return Align(
-                      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                      alignment: isUser
+                          ? Alignment.centerRight
+                          : Alignment.centerLeft,
                       child: Container(
                         margin: const EdgeInsets.symmetric(vertical: 4),
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: isUser ? OneDarkTheme.primary.withOpacity(0.15) : OneDarkTheme.cardBg,
+                          color: isUser
+                              ? OneDarkTheme.primary.withOpacity(0.15)
+                              : OneDarkTheme.cardBg,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: isUser ? OneDarkTheme.primary.withOpacity(0.3) : OneDarkTheme.border,
+                            color: isUser
+                                ? OneDarkTheme.primary.withOpacity(0.3)
+                                : OneDarkTheme.border,
                           ),
                         ),
                         child: Column(
@@ -878,7 +968,9 @@ class _RightAiAssistantPanelState extends ConsumerState<_RightAiAssistantPanel> 
                             Text(
                               isUser ? 'You' : 'AI',
                               style: TextStyle(
-                                color: isUser ? OneDarkTheme.primary : OneDarkTheme.cyan,
+                                color: isUser
+                                    ? OneDarkTheme.primary
+                                    : OneDarkTheme.cyan,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 11,
                               ),
@@ -929,19 +1021,29 @@ class _RightAiAssistantPanelState extends ConsumerState<_RightAiAssistantPanel> 
                 Expanded(
                   child: TextField(
                     controller: _controller,
-                    style: const TextStyle(fontSize: 13, color: OneDarkTheme.textLight),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: OneDarkTheme.textLight,
+                    ),
                     decoration: InputDecoration(
                       hintText: 'Tanya asisten...',
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
                       fillColor: OneDarkTheme.cardBg,
                       filled: true,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: OneDarkTheme.border),
+                        borderSide: const BorderSide(
+                          color: OneDarkTheme.border,
+                        ),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: OneDarkTheme.border),
+                        borderSide: const BorderSide(
+                          color: OneDarkTheme.border,
+                        ),
                       ),
                     ),
                     onSubmitted: (val) {
@@ -985,41 +1087,46 @@ class _SidebarMarkdownText extends StatelessWidget {
     final matches = exp.allMatches(inlineText);
     for (final match in matches) {
       if (match.start > start) {
-        spans.add(TextSpan(
-          text: inlineText.substring(start, match.start),
-          style: baseStyle,
-        ));
+        spans.add(
+          TextSpan(
+            text: inlineText.substring(start, match.start),
+            style: baseStyle,
+          ),
+        );
       }
 
       final matchedText = match.group(0)!;
       if (matchedText.startsWith('**') && matchedText.endsWith('**')) {
-        spans.add(TextSpan(
-          text: matchedText.substring(2, matchedText.length - 2),
-          style: baseStyle.copyWith(fontWeight: FontWeight.bold),
-        ));
-      } else if (matchedText.startsWith('*') && matchedText.endsWith('*')) {
-        spans.add(TextSpan(
-          text: matchedText.substring(1, matchedText.length - 1),
-          style: baseStyle.copyWith(fontStyle: FontStyle.italic),
-        ));
-      } else if (matchedText.startsWith('`') && matchedText.endsWith('`')) {
-        spans.add(TextSpan(
-          text: matchedText.substring(1, matchedText.length - 1),
-          style: baseStyle.copyWith(
-            fontFamily: 'monospace',
-            backgroundColor: Colors.white.withOpacity(0.08),
+        spans.add(
+          TextSpan(
+            text: matchedText.substring(2, matchedText.length - 2),
+            style: baseStyle.copyWith(fontWeight: FontWeight.bold),
           ),
-        ));
+        );
+      } else if (matchedText.startsWith('*') && matchedText.endsWith('*')) {
+        spans.add(
+          TextSpan(
+            text: matchedText.substring(1, matchedText.length - 1),
+            style: baseStyle.copyWith(fontStyle: FontStyle.italic),
+          ),
+        );
+      } else if (matchedText.startsWith('`') && matchedText.endsWith('`')) {
+        spans.add(
+          TextSpan(
+            text: matchedText.substring(1, matchedText.length - 1),
+            style: baseStyle.copyWith(
+              fontFamily: 'monospace',
+              backgroundColor: Colors.white.withOpacity(0.08),
+            ),
+          ),
+        );
       }
 
       start = match.end;
     }
 
     if (start < inlineText.length) {
-      spans.add(TextSpan(
-        text: inlineText.substring(start),
-        style: baseStyle,
-      ));
+      spans.add(TextSpan(text: inlineText.substring(start), style: baseStyle));
     }
 
     return spans;
@@ -1028,11 +1135,13 @@ class _SidebarMarkdownText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final style = theme.textTheme.bodyMedium ?? const TextStyle(color: OneDarkTheme.textMain, fontSize: 13);
-    
+    final style =
+        theme.textTheme.bodyMedium ??
+        const TextStyle(color: OneDarkTheme.textMain, fontSize: 13);
+
     final List<Widget> children = [];
     final lines = content.split('\n');
-    
+
     bool inCodeBlock = false;
     List<String> codeBlockLines = [];
 
@@ -1083,10 +1192,7 @@ class _SidebarMarkdownText extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 4),
             child: Text(
               trimmed.substring(2),
-              style: style.copyWith(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-              ),
+              style: style.copyWith(fontSize: 15, fontWeight: FontWeight.bold),
             ),
           ),
         );
@@ -1096,10 +1202,7 @@ class _SidebarMarkdownText extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 4),
             child: Text(
               trimmed.substring(3),
-              style: style.copyWith(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-              ),
+              style: style.copyWith(fontSize: 14, fontWeight: FontWeight.bold),
             ),
           ),
         );
@@ -1109,10 +1212,7 @@ class _SidebarMarkdownText extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 3),
             child: Text(
               trimmed.substring(4),
-              style: style.copyWith(
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-              ),
+              style: style.copyWith(fontSize: 13, fontWeight: FontWeight.bold),
             ),
           ),
         );
@@ -1127,9 +1227,7 @@ class _SidebarMarkdownText extends StatelessWidget {
                 Text('• ', style: style.copyWith(fontWeight: FontWeight.bold)),
                 Expanded(
                   child: RichText(
-                    text: TextSpan(
-                      children: _parseInline(contentText, style),
-                    ),
+                    text: TextSpan(children: _parseInline(contentText, style)),
                   ),
                 ),
               ],
@@ -1141,9 +1239,7 @@ class _SidebarMarkdownText extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 2),
             child: RichText(
-              text: TextSpan(
-                children: _parseInline(line, style),
-              ),
+              text: TextSpan(children: _parseInline(line, style)),
             ),
           ),
         );
@@ -1163,10 +1259,7 @@ class _QuickActionChip extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
 
-  const _QuickActionChip({
-    required this.label,
-    required this.onTap,
-  });
+  const _QuickActionChip({required this.label, required this.onTap});
 
   @override
   Widget build(BuildContext context) {

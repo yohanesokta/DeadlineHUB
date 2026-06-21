@@ -41,4 +41,5 @@ abstract class AIRepository {
   Stream<String> chatStream(String message);
   Future<void> clearHistory();
   Stream<List<AiTaskEvent>> get taskEvents;
+  void logActivity(String taskId, String title, TaskState state, {String? error});
 }
