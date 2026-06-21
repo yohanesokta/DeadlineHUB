@@ -17,6 +17,11 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Create secrets.json
+        run: |
+          echo '${{ secrets.SECRETS_JSON }}' > secrets.json
+        shell: bash
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -47,6 +52,11 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+
+      - name: Create secrets.json
+        run: |
+          echo '${{ secrets.SECRETS_JSON }}' > secrets.json
+        shell: bash
 
       - name: Install Native Build Dependencies
         run: |
@@ -80,6 +90,11 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+
+      - name: Create secrets.json
+        run: |
+          echo '${{ secrets.SECRETS_JSON }}' > secrets.json
+        shell: bash
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
