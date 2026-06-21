@@ -8,6 +8,7 @@ import 'package:deadlinehub/core/services/sync/sync_status_repository.dart';
 import 'package:deadlinehub/features/ai/domain/repositories/ai_repository.dart';
 import 'package:deadlinehub/core/database/database.dart';
 import 'package:drift/drift.dart' hide Column;
+import 'package:flutter_svg/flutter_svg.dart';
 
 class MainLayout extends ConsumerStatefulWidget {
   final Widget child;
@@ -129,43 +130,43 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     children: [
                       _SidebarItem(
-                        icon: Icons.dashboard_outlined,
+                        iconPath: 'assets/icons/insights.svg',
                         label: 'Insights',
                         isSelected: selectedIndex == 0,
                         onTap: () => _onItemTapped(0, context),
                       ),
                       _SidebarItem(
-                        icon: Icons.chat_bubble_outline,
+                        iconPath: 'assets/icons/ai_chat.svg',
                         label: 'AI Chat',
                         isSelected: selectedIndex == 1,
                         onTap: () => _onItemTapped(1, context),
                       ),
                       _SidebarItem(
-                        icon: Icons.calendar_today_outlined,
+                        iconPath: 'assets/icons/calendar.svg',
                         label: 'Calendar',
                         isSelected: selectedIndex == 2,
                         onTap: () => _onItemTapped(2, context),
                       ),
                       _SidebarItem(
-                        icon: Icons.folder_open_outlined,
+                        iconPath: 'assets/icons/drive.svg',
                         label: 'Google Drive',
                         isSelected: selectedIndex == 3,
                         onTap: () => _onItemTapped(3, context),
                       ),
                       _SidebarItem(
-                        icon: Icons.school_outlined,
+                        iconPath: 'assets/icons/classroom.svg',
                         label: 'Classroom',
                         isSelected: selectedIndex == 4,
                         onTap: () => _onItemTapped(4, context),
                       ),
                       _SidebarItem(
-                        icon: Icons.mail_outline,
+                        iconPath: 'assets/icons/email.svg',
                         label: 'Academic Email',
                         isSelected: selectedIndex == 5,
                         onTap: () => _onItemTapped(5, context),
                       ),
                       _SidebarItem(
-                        icon: Icons.settings_outlined,
+                        iconPath: 'assets/icons/settings.svg',
                         label: 'Settings',
                         isSelected: selectedIndex == 6,
                         onTap: () => _onItemTapped(6, context),
@@ -368,13 +369,13 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
 }
 
 class _SidebarItem extends StatelessWidget {
-  final IconData icon;
+  final String iconPath;
   final String label;
   final bool isSelected;
   final VoidCallback onTap;
 
   const _SidebarItem({
-    required this.icon,
+    required this.iconPath,
     required this.label,
     required this.isSelected,
     required this.onTap,
@@ -396,10 +397,14 @@ class _SidebarItem extends StatelessWidget {
               onTap: onTap,
               dense: true,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              leading: Icon(
-                icon,
-                size: 18,
-                color: isSelected ? OneDarkTheme.primary : OneDarkTheme.textMain,
+              leading: SvgPicture.asset(
+                iconPath,
+                width: 18,
+                height: 18,
+                colorFilter: ColorFilter.mode(
+                  isSelected ? OneDarkTheme.primary : OneDarkTheme.textMain,
+                  BlendMode.srcIn,
+                ),
               ),
               title: Text(
                 label,

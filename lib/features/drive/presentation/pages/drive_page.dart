@@ -4,6 +4,7 @@ import 'package:deadlinehub/core/theme/theme.dart';
 import 'package:deadlinehub/core/providers/providers.dart';
 import 'package:deadlinehub/features/drive/domain/entities/drive_file.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class DrivePage extends ConsumerStatefulWidget {
   const DrivePage({super.key});
@@ -158,22 +159,44 @@ class _FileGridItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    IconData getIcon() {
-      final name = file.name.toLowerCase();
-      if (name.contains('.pdf')) return Icons.picture_as_pdf;
-      if (name.contains('.docx') || name.contains('.txt')) return Icons.description;
-      if (name.contains('.xlsx') || name.contains('.csv')) return Icons.table_chart;
-      if (name.contains('.ipynb')) return Icons.code;
-      return Icons.insert_drive_file;
-    }
-
-    Color getIconColor() {
-      final name = file.name.toLowerCase();
-      if (name.contains('.pdf')) return OneDarkTheme.error;
-      if (name.contains('.docx')) return OneDarkTheme.primary;
-      if (name.contains('.xlsx')) return OneDarkTheme.success;
-      if (name.contains('.ipynb')) return OneDarkTheme.purple;
-      return OneDarkTheme.textMain;
+    String getIconPath() {
+      final mime = file.mimeType.toLowerCase();
+      if (mime == 'application/vnd.google-apps.folder') {
+        return 'assets/icons/file_folder.svg';
+      }
+      if (mime == 'application/pdf') {
+        return 'assets/icons/file_pdf.svg';
+      }
+      if (mime.contains('document') || mime.contains('word')) {
+        return 'assets/icons/file_doc.svg';
+      }
+      if (mime.contains('spreadsheet') || mime.contains('sheet') || mime.contains('excel')) {
+        return 'assets/icons/file_sheet.svg';
+      }
+      if (mime.contains('presentation') || mime.contains('slide') || mime.contains('powerpoint')) {
+        return 'assets/icons/file_slide.svg';
+      }
+      if (mime.startsWith('image/')) {
+        return 'assets/icons/file_image.svg';
+      }
+      if (mime.startsWith('audio/')) {
+        return 'assets/icons/file_audio.svg';
+      }
+      if (mime.startsWith('video/')) {
+        return 'assets/icons/file_video.svg';
+      }
+      if (mime.contains('code') ||
+          mime.contains('javascript') ||
+          mime.contains('json') ||
+          file.name.endsWith('.py') ||
+          file.name.endsWith('.dart') ||
+          file.name.endsWith('.ipynb')) {
+        return 'assets/icons/file_code.svg';
+      }
+      if (mime.startsWith('text/')) {
+        return 'assets/icons/file_text.svg';
+      }
+      return 'assets/icons/file_generic.svg';
     }
 
     return Card(
@@ -185,7 +208,11 @@ class _FileGridItem extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(getIcon(), color: getIconColor(), size: 28),
+              SvgPicture.asset(
+                getIconPath(),
+                width: 28,
+                height: 28,
+              ),
               const Spacer(),
               Text(
                 file.name,

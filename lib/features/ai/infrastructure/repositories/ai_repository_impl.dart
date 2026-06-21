@@ -122,56 +122,27 @@ class AIRepositoryImpl implements AIRepository {
 
   /// Run Gemini with tools definition using real Google Workspace repositories
   Future<String> _runGeminiAgentFlow(String apiKey, String userPrompt) async {
-    final modelName = await _secureStorage.getGeminiModel() ?? 'models/gemini-2.0-flash';
+    final modelName = await _secureStorage.getGeminiModel() ?? 'models/gemini-1.5-flash';
     final model = GenerativeModel(
       model: modelName,
       apiKey: apiKey,
-      tools: [
-        Tool(functionDeclarations: [
-          FunctionDeclaration(
-            'list_classroom_deadlines',
-            'Fetches student deadlines and course assignments from Google Classroom',
-            Schema.object(properties: {}),
-          ),
-          FunctionDeclaration(
-            'search_google_drive',
-            'Search for course documents and files in Google Drive',
-            Schema.object(properties: {
-              'query': Schema.string(description: 'File name keyword to search'),
-            }, requiredProperties: ['query']),
-          ),
-          FunctionDeclaration(
-            'create_calendar_event',
-            'Creates a study session or calendar event block',
-            Schema.object(properties: {
-              'title': Schema.string(description: 'Event title'),
-              'hoursFromNow': Schema.integer(description: 'Start time represented in hours from now'),
-              'durationHours': Schema.integer(description: 'Duration of study block in hours'),
-            }, requiredProperties: ['title', 'hoursFromNow', 'durationHours']),
-          ),
-          FunctionDeclaration(
-            'list_recent_emails',
-            'Fetches student academic and course-related emails from Gmail',
-            Schema.object(properties: {}),
-          ),
-        ]),
-      ],
     );
 
     final chatSession = model.startChat();
-    var response = await chatSession.sendMessage(Content.text(userPrompt));
 
-    final functionCalls = response.functionCalls;
-    if (functionCalls.isEmpty) {
-      _addOrUpdateTask('building', 'Building response...', TaskState.running);
-      await Future.delayed(const Duration(milliseconds: 300));
-      _addOrUpdateTask('building', 'Building response...', TaskState.completed);
-      return response.text ?? "I couldn't process that request.";
-    }
+    final systemPrompt =
+        "You are an academic assistant for a student. "
+        "You have access to the following tool call tags. If the user's request requires external data, you must output ONLY the corresponding tag (with no other text in your response) so the system can run it and return the data:\n"
+        "- To fetch Google Classroom deadlines: output '[CALL:list_classroom_deadlines]'\n"
+        "- To search Google Drive: output '[CALL:search_google_drive query=\"<keyword>\"]'\n"
+        "- To create a calendar event: output '[CALL:create_calendar_event title=\"<title>\" hoursFromNow=<hours> durationHours=<duration>]'\n"
+        "- To list recent emails: output '[CALL:list_recent_emails]'\n"
+        "If the user's request does not require tools, respond directly in a friendly, helpful, conversational Indonesian language (without using any emojis).";
 
-    // Process tool calls requested by Gemini
-    final functionCall = functionCalls.first;
-    if (functionCall.name == 'list_classroom_deadlines') {
+    var response = await chatSession.sendMessage(Content.text("$systemPrompt\n\nUser: $userPrompt"));
+    var responseText = response.text ?? "";
+
+    if (responseText.contains('[CALL:list_classroom_deadlines]')) {
       _addOrUpdateTask('classroom_tool', 'Fetching Classroom assignments...', TaskState.running);
       try {
         final assignments = await _classroomRepo.fetchAssignments(forceRefresh: true);
@@ -179,40 +150,41 @@ class AIRepositoryImpl implements AIRepository {
         _addOrUpdateTask('classroom_tool', 'Fetching Classroom assignments...', TaskState.completed);
 
         _addOrUpdateTask('building', 'Building response...', TaskState.running);
-        final toolResponse = await chatSession.sendMessage(Content.functionResponse(
-          functionCall.name,
-          {'result': deadlineText},
+        final toolResponse = await chatSession.sendMessage(Content.text(
+          "Here are the Classroom deadlines that were retrieved. Summarize and present them to the student in friendly Indonesian (without using emojis):\n$deadlineText"
         ));
         _addOrUpdateTask('building', 'Building response...', TaskState.completed);
         return toolResponse.text ?? "Here are your deadlines:\n$deadlineText";
       } catch (e) {
         _addOrUpdateTask('classroom_tool', 'Fetching Classroom assignments...', TaskState.failed, error: e.toString());
-        rethrow;
+        return "Gagal mengambil data Classroom: $e";
       }
-    } 
-    
-    if (functionCall.name == 'search_google_drive') {
-      final queryArg = functionCall.args['query'] as String? ?? "";
+    }
+
+    if (responseText.contains('[CALL:search_google_drive')) {
+      final regExp = RegExp(r'query="([^"]+)"');
+      final match = regExp.firstMatch(responseText);
+      final query = match?.group(1) ?? "";
+
       _addOrUpdateTask('drive_tool', 'Searching related Drive files...', TaskState.running);
       try {
-        final files = await _driveRepo.searchFiles(queryArg);
+        final files = await _driveRepo.searchFiles(query);
         final fileText = files.map((f) => "- [${f.name}](${f.webViewLink})").join("\n");
         _addOrUpdateTask('drive_tool', 'Searching related Drive files...', TaskState.completed);
 
         _addOrUpdateTask('building', 'Building response...', TaskState.running);
-        final toolResponse = await chatSession.sendMessage(Content.functionResponse(
-          functionCall.name,
-          {'result': fileText},
+        final toolResponse = await chatSession.sendMessage(Content.text(
+          "Here are the Drive files found for query '$query'. Present them to the student in friendly Indonesian (without using emojis):\n$fileText"
         ));
         _addOrUpdateTask('building', 'Building response...', TaskState.completed);
         return toolResponse.text ?? "Here are the files I found:\n$fileText";
       } catch (e) {
         _addOrUpdateTask('drive_tool', 'Searching related Drive files...', TaskState.failed, error: e.toString());
-        rethrow;
+        return "Gagal mencari file Drive: $e";
       }
     }
 
-    if (functionCall.name == 'list_recent_emails') {
+    if (responseText.contains('[CALL:list_recent_emails]')) {
       _addOrUpdateTask('gmail_tool', 'Reading recent emails...', TaskState.running);
       try {
         final emails = await _emailRepo.fetchRecentEmails(forceRefresh: true);
@@ -220,25 +192,28 @@ class AIRepositoryImpl implements AIRepository {
         _addOrUpdateTask('gmail_tool', 'Reading recent emails...', TaskState.completed);
 
         _addOrUpdateTask('building', 'Building response...', TaskState.running);
-        final toolResponse = await chatSession.sendMessage(Content.functionResponse(
-          functionCall.name,
-          {'result': emailText},
+        final toolResponse = await chatSession.sendMessage(Content.text(
+          "Here are the recent emails retrieved. Summarize them and present them to the student in friendly Indonesian (without using emojis):\n$emailText"
         ));
         _addOrUpdateTask('building', 'Building response...', TaskState.completed);
         return toolResponse.text ?? "Here is your email digest:\n$emailText";
       } catch (e) {
         _addOrUpdateTask('gmail_tool', 'Reading recent emails...', TaskState.failed, error: e.toString());
-        rethrow;
+        return "Gagal membaca email: $e";
       }
     }
 
-    if (functionCall.name == 'create_calendar_event') {
-      final title = functionCall.args['title'] as String? ?? "Study Block";
-      final hoursFromNow = functionCall.args['hoursFromNow'] as int? ?? 1;
-      final duration = functionCall.args['durationHours'] as int? ?? 1;
+    if (responseText.contains('[CALL:create_calendar_event')) {
+      final titleReg = RegExp(r'title="([^"]+)"');
+      final hoursReg = RegExp(r'hoursFromNow=(\d+)');
+      final durationReg = RegExp(r'durationHours=(\d+)');
+
+      final title = titleReg.firstMatch(responseText)?.group(1) ?? "Study Session";
+      final hoursFromNow = int.tryParse(hoursReg.firstMatch(responseText)?.group(1) ?? "2") ?? 2;
+      final durationHours = int.tryParse(durationReg.firstMatch(responseText)?.group(1) ?? "1") ?? 1;
 
       final start = DateTime.now().add(Duration(hours: hoursFromNow));
-      final end = start.add(Duration(hours: duration));
+      final end = start.add(Duration(hours: durationHours));
 
       _addOrUpdateTask('calendar_tool', 'Creating calendar event...', TaskState.running);
       try {
@@ -252,26 +227,29 @@ class AIRepositoryImpl implements AIRepository {
         _addOrUpdateTask('calendar_tool', 'Creating calendar event...', TaskState.completed);
 
         _addOrUpdateTask('meet_tool', 'Generating Google Meet link...', TaskState.running);
-        await Future.delayed(const Duration(milliseconds: 500));
+        await Future.delayed(const Duration(milliseconds: 300));
         _addOrUpdateTask('meet_tool', 'Generating Google Meet link...', TaskState.completed);
 
         _addOrUpdateTask('sync_tool', 'Synchronizing changes...', TaskState.running);
-        await Future.delayed(const Duration(milliseconds: 500));
+        await Future.delayed(const Duration(milliseconds: 300));
         _addOrUpdateTask('sync_tool', 'Synchronizing changes...', TaskState.completed);
 
         _addOrUpdateTask('building', 'Building response...', TaskState.running);
-        final toolResponse = await chatSession.sendMessage(Content.functionResponse(
-          functionCall.name,
-          {'result': 'Created event ${created.title} starting at ${created.startTime}'},
+        final toolResponse = await chatSession.sendMessage(Content.text(
+          "The calendar event '$title' starting at $start has been successfully scheduled. Tell the student in friendly Indonesian (without using emojis)."
         ));
         _addOrUpdateTask('building', 'Building response...', TaskState.completed);
         return toolResponse.text ?? "Successfully scheduled study block: ${created.title}.";
       } catch (e) {
         _addOrUpdateTask('calendar_tool', 'Creating calendar event...', TaskState.failed, error: e.toString());
-        rethrow;
+        return "Gagal membuat jadwal di Calendar: $e";
       }
     }
 
-    return response.text ?? "Completed agent actions.";
+    _addOrUpdateTask('building', 'Building response...', TaskState.running);
+    await Future.delayed(const Duration(milliseconds: 300));
+    _addOrUpdateTask('building', 'Building response...', TaskState.completed);
+
+    return responseText;
   }
 }
