@@ -25,12 +25,27 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
   }
 
   Future<void> _loadEvents() async {
-    setState(() => _isLoadingEvents = true);
+    final cacheRepo = ref.read(cacheRepositoryProvider);
+    final cached = await cacheRepo.getCalendarEvents();
+    if (cached.isNotEmpty) {
+      setState(() {
+        _events = cached;
+        _isLoadingEvents = false;
+      });
+    } else {
+      setState(() {
+        _isLoadingEvents = true;
+      });
+    }
+
     try {
-      final data = await ref.read(calendarRepositoryProvider).fetchEvents();
-      setState(() => _events = data);
+      final remote = await ref.read(calendarRepositoryProvider).fetchEvents();
+      setState(() {
+        _events = remote;
+      });
+      await cacheRepo.saveCalendarEvents(remote);
     } catch (e) {
-      //
+      // Keep displaying cached data on remote failure
     } finally {
       setState(() => _isLoadingEvents = false);
     }
@@ -66,6 +81,163 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
     _loadEvents();
   }
 
+  Future<DateTime?> _pickDateTime(BuildContext context, DateTime initial) async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime.now().subtract(const Duration(days: 365)),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    if (date == null) return null;
+
+    if (!context.mounted) return null;
+
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(initial),
+    );
+    if (time == null) return null;
+
+    return DateTime(
+      date.year,
+      date.month,
+      date.day,
+      time.hour,
+      time.minute,
+    );
+  }
+
+  Future<void> _showEditEventDialog({
+    required BuildContext context,
+    required CalendarEvent event,
+    required Function(CalendarEvent) onSave,
+  }) async {
+    final titleController = TextEditingController(text: event.title);
+    final descController = TextEditingController(text: event.description);
+    DateTime start = event.startTime;
+    DateTime end = event.endTime;
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              backgroundColor: OneDarkTheme.surface,
+              title: const Text('Edit Event', style: TextStyle(color: OneDarkTheme.textLight)),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Title', style: TextStyle(color: OneDarkTheme.textDark, fontSize: 12)),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: titleController,
+                      style: const TextStyle(color: OneDarkTheme.textLight, fontSize: 13),
+                      decoration: const InputDecoration(
+                        hintText: 'Event Title',
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text('Description', style: TextStyle(color: OneDarkTheme.textDark, fontSize: 12)),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: descController,
+                      style: const TextStyle(color: OneDarkTheme.textLight, fontSize: 13),
+                      maxLines: 2,
+                      decoration: const InputDecoration(
+                        hintText: 'Event Description',
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text('Start Time', style: TextStyle(color: OneDarkTheme.textDark, fontSize: 12)),
+                    const SizedBox(height: 6),
+                    InkWell(
+                      onTap: () async {
+                        final picked = await _pickDateTime(context, start);
+                        if (picked != null) {
+                          setState(() => start = picked);
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: OneDarkTheme.cardBg,
+                          border: Border.all(color: OneDarkTheme.border),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.calendar_today, size: 16, color: OneDarkTheme.primary),
+                            const SizedBox(width: 8),
+                            Text(
+                              start.toLocal().toString().split('.')[0],
+                              style: const TextStyle(color: OneDarkTheme.textLight, fontSize: 13),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text('End Time', style: TextStyle(color: OneDarkTheme.textDark, fontSize: 12)),
+                    const SizedBox(height: 6),
+                    InkWell(
+                      onTap: () async {
+                        final picked = await _pickDateTime(context, end);
+                        if (picked != null) {
+                          setState(() => end = picked);
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: OneDarkTheme.cardBg,
+                          border: Border.all(color: OneDarkTheme.border),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.calendar_today, size: 16, color: OneDarkTheme.primary),
+                            const SizedBox(width: 8),
+                            Text(
+                              end.toLocal().toString().split('.')[0],
+                              style: const TextStyle(color: OneDarkTheme.textLight, fontSize: 13),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancel', style: TextStyle(color: OneDarkTheme.textDark)),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: OneDarkTheme.primary),
+                  onPressed: () {
+                    final edited = event.copyWith(
+                      title: titleController.text.trim(),
+                      description: descController.text.trim(),
+                      startTime: start,
+                      endTime: end,
+                    );
+                    onSave(edited);
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text('Save', style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            );
+          }
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -87,13 +259,86 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
                   Expanded(
                     child: _isLoadingEvents
                         ? const Center(child: CircularProgressIndicator(color: OneDarkTheme.primary))
-                        : ListView.builder(
-                            itemCount: _events.length,
-                            itemBuilder: (context, index) {
-                              final event = _events[index];
-                              return _EventListItem(event: event);
-                            },
-                          ),
+                        : _events.isEmpty
+                            ? const Center(
+                                child: Text(
+                                  'No calendar events available.',
+                                  style: TextStyle(color: OneDarkTheme.textMain, fontSize: 13),
+                                ),
+                              )
+                            : ListView.builder(
+                                itemCount: _events.length,
+                                itemBuilder: (context, index) {
+                                  final event = _events[index];
+                                  return _EventListItem(
+                                    event: event,
+                                    onEdit: () {
+                                      _showEditEventDialog(
+                                        context: context,
+                                        event: event,
+                                        onSave: (edited) async {
+                                          try {
+                                            await ref.read(calendarRepositoryProvider).updateEvent(edited);
+                                            _loadEvents();
+                                            if (context.mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                const SnackBar(content: Text('Event updated successfully!')),
+                                              );
+                                            }
+                                          } catch (e) {
+                                            if (context.mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(content: Text('Failed to update event: $e')),
+                                              );
+                                            }
+                                          }
+                                        },
+                                      );
+                                    },
+                                    onDelete: () async {
+                                      final confirm = await showDialog<bool>(
+                                        context: context,
+                                        builder: (context) => AlertDialog(
+                                          backgroundColor: OneDarkTheme.surface,
+                                          title: const Text('Delete Event', style: TextStyle(color: OneDarkTheme.textLight)),
+                                          content: const Text(
+                                            'Are you sure you want to delete this event from Google Calendar?',
+                                            style: TextStyle(color: OneDarkTheme.textMain),
+                                          ),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () => Navigator.of(context).pop(false),
+                                              child: const Text('Cancel', style: TextStyle(color: OneDarkTheme.textDark)),
+                                            ),
+                                            ElevatedButton(
+                                              style: ElevatedButton.styleFrom(backgroundColor: OneDarkTheme.error),
+                                              onPressed: () => Navigator.of(context).pop(true),
+                                              child: const Text('Delete', style: TextStyle(color: Colors.white)),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                      if (confirm == true) {
+                                        try {
+                                          await ref.read(calendarRepositoryProvider).deleteEvent(event.id);
+                                          _loadEvents();
+                                          if (context.mounted) {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              const SnackBar(content: Text('Event deleted successfully!')),
+                                            );
+                                          }
+                                        } catch (e) {
+                                          if (context.mounted) {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              SnackBar(content: Text('Failed to delete event: $e')),
+                                            );
+                                          }
+                                        }
+                                      }
+                                    },
+                                  );
+                                },
+                              ),
                   ),
                 ],
               ),
@@ -186,6 +431,38 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
                                 '${event.startTime.toLocal().toString().split('.')[0]} (${event.endTime.difference(event.startTime).inHours} hrs)',
                                 style: const TextStyle(color: OneDarkTheme.textMain, fontSize: 11),
                               ),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.edit, size: 16, color: OneDarkTheme.primary),
+                                    onPressed: () {
+                                      _showEditEventDialog(
+                                        context: context,
+                                        event: event,
+                                        onSave: (edited) {
+                                          setState(() {
+                                            _draftEvents[index] = edited;
+                                          });
+                                        },
+                                      );
+                                    },
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete, size: 16, color: OneDarkTheme.error),
+                                    onPressed: () {
+                                      setState(() {
+                                        _draftEvents.removeAt(index);
+                                      });
+                                    },
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                  ),
+                                ],
+                              ),
                             ),
                           );
                         },
@@ -220,7 +497,14 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
 
 class _EventListItem extends StatelessWidget {
   final CalendarEvent event;
-  const _EventListItem({required this.event});
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
+
+  const _EventListItem({
+    required this.event,
+    this.onEdit,
+    this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -304,6 +588,28 @@ class _EventListItem extends StatelessWidget {
               ],
             ),
           ),
+          if (onEdit != null || onDelete != null) ...[
+            const SizedBox(width: 16),
+            Column(
+              children: [
+                if (onEdit != null)
+                  IconButton(
+                    icon: const Icon(Icons.edit, size: 16, color: OneDarkTheme.primary),
+                    onPressed: onEdit,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                if (onEdit != null && onDelete != null) const SizedBox(height: 12),
+                if (onDelete != null)
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, size: 16, color: OneDarkTheme.error),
+                    onPressed: onDelete,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+              ],
+            ),
+          ],
         ],
       ),
     );

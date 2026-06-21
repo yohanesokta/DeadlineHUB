@@ -7,4 +7,8 @@ abstract class AuthRepository {
   Future<bool> isAuthenticated();
   Stream<bool> get authStateChanges;
   Future<AuthClient?> getAuthClient();
+  Future<String?> getUserName();
+  Future<String?> getUserEmail();
+  Future<String?> getUserPicture();
+  Future<void> refreshProfile();
 }

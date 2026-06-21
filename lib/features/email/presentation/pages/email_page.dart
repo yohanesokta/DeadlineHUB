@@ -23,18 +23,74 @@ class _EmailPageState extends ConsumerState<EmailPage> {
   }
 
   Future<void> _loadEmails({bool force = false}) async {
-    setState(() => _isLoading = true);
+    final cacheRepo = ref.read(cacheRepositoryProvider);
+    final cached = await cacheRepo.getEmails();
+    if (cached.isNotEmpty) {
+      setState(() {
+        _emails = cached;
+        _isLoading = false;
+      });
+    } else {
+      setState(() {
+        _isLoading = true;
+      });
+    }
+
     try {
-      final res = await ref.read(emailRepositoryProvider).fetchRecentEmails(forceRefresh: force);
-      setState(() => _emails = res);
+      final remote = await ref.read(emailRepositoryProvider).fetchRecentEmails(forceRefresh: force);
+      setState(() {
+        _emails = remote;
+      });
+      await cacheRepo.saveEmails(remote);
     } catch (e) {
-      //
+      // Keep displaying cached data on failure
     } finally {
       setState(() => _isLoading = false);
     }
   }
 
   Future<void> _showSummary(AcademicEmail email) async {
+    // If summary is already cached locally, show it directly
+    if (email.bodySummary != null) {
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            backgroundColor: OneDarkTheme.cardBg,
+            title: const Row(
+              children: [
+                Icon(Icons.auto_awesome, color: OneDarkTheme.primary, size: 20),
+                SizedBox(width: 8),
+                Text('AI Email Summary', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: OneDarkTheme.textLight)),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Subject: ${email.subject}', style: const TextStyle(color: OneDarkTheme.textLight, fontWeight: FontWeight.bold, fontSize: 13)),
+                const SizedBox(height: 12),
+                const Divider(),
+                const SizedBox(height: 12),
+                Text(
+                  email.bodySummary!,
+                  style: const TextStyle(color: OneDarkTheme.textMain, fontSize: 13, height: 1.45),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Dismiss', style: TextStyle(color: OneDarkTheme.textMain)),
+              ),
+            ],
+          );
+        },
+      );
+      return;
+    }
+
+    // If summary is null, show a FutureBuilder dialog to fetch it dynamically
     showDialog(
       context: context,
       builder: (context) {
@@ -47,19 +103,74 @@ class _EmailPageState extends ConsumerState<EmailPage> {
               Text('AI Email Summary', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: OneDarkTheme.textLight)),
             ],
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Subject: ${email.subject}', style: const TextStyle(color: OneDarkTheme.textLight, fontWeight: FontWeight.bold, fontSize: 13)),
-              const SizedBox(height: 12),
-              const Divider(),
-              const SizedBox(height: 12),
-              Text(
-                email.bodySummary ?? 'Generating summary...',
-                style: const TextStyle(color: OneDarkTheme.textMain, fontSize: 13, height: 1.45),
-              ),
-            ],
+          content: FutureBuilder<String>(
+            future: ref.read(emailRepositoryProvider).summarizeEmail(email.snippet),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Subject: ${email.subject}', style: const TextStyle(color: OneDarkTheme.textLight, fontWeight: FontWeight.bold, fontSize: 13)),
+                    const SizedBox(height: 12),
+                    const Divider(),
+                    const SizedBox(height: 24),
+                    const Center(
+                      child: CircularProgressIndicator(color: OneDarkTheme.primary),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+                );
+              }
+
+              if (snapshot.hasError) {
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Subject: ${email.subject}', style: const TextStyle(color: OneDarkTheme.textLight, fontWeight: FontWeight.bold, fontSize: 13)),
+                    const SizedBox(height: 12),
+                    const Divider(),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Error generating summary: ${snapshot.error}',
+                      style: const TextStyle(color: OneDarkTheme.error, fontSize: 13),
+                    ),
+                  ],
+                );
+              }
+
+              final summary = snapshot.data ?? 'No summary generated.';
+
+              // Update the email in parent page state after the current frame builds
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) {
+                  setState(() {
+                    _emails = _emails.map((e) {
+                      if (e.id == email.id) {
+                        return e.copyWith(bodySummary: summary);
+                      }
+                      return e;
+                    }).toList();
+                  });
+                }
+              });
+
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Subject: ${email.subject}', style: const TextStyle(color: OneDarkTheme.textLight, fontWeight: FontWeight.bold, fontSize: 13)),
+                  const SizedBox(height: 12),
+                  const Divider(),
+                  const SizedBox(height: 12),
+                  Text(
+                    summary,
+                    style: const TextStyle(color: OneDarkTheme.textMain, fontSize: 13, height: 1.45),
+                  ),
+                ],
+              );
+            },
           ),
           actions: [
             TextButton(
@@ -70,29 +181,6 @@ class _EmailPageState extends ConsumerState<EmailPage> {
         );
       },
     );
-
-    if (email.bodySummary == null) {
-      try {
-        final summary = await ref.read(emailRepositoryProvider).summarizeEmail(email.snippet);
-        // Update item in local list
-        setState(() {
-          _emails = _emails.map((e) {
-            if (e.id == email.id) {
-              return e.copyWith(bodySummary: summary);
-            }
-            return e;
-          }).toList();
-        });
-        
-        // Re-open dialog with content (close old first)
-        if (mounted) {
-          Navigator.pop(context);
-          _showSummary(email.copyWith(bodySummary: summary));
-        }
-      } catch (e) {
-        //
-      }
-    }
   }
 
   @override
@@ -144,7 +232,12 @@ class _EmailPageState extends ConsumerState<EmailPage> {
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator(color: OneDarkTheme.primary))
                   : displayedEmails.isEmpty
-                      ? const Center(child: Text('No emails found.', style: TextStyle(color: OneDarkTheme.textDark)))
+                      ? const Center(
+                          child: Text(
+                            'No emails available.',
+                            style: TextStyle(color: OneDarkTheme.textMain, fontSize: 13),
+                          ),
+                        )
                       : ListView.builder(
                           itemCount: displayedEmails.length,
                           itemBuilder: (context, index) {

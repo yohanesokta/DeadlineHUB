@@ -18,6 +18,9 @@ class AIRepositoryImpl implements AIRepository {
   final ClassroomRepository _classroomRepo;
   final EmailRepository _emailRepo;
 
+  final _taskEventsController = StreamController<List<AiTaskEvent>>.broadcast();
+  final List<AiTaskEvent> _activeTasks = [];
+
   AIRepositoryImpl({
     required AppDatabase db,
     required SecureStorageService secureStorage,
@@ -31,6 +34,30 @@ class AIRepositoryImpl implements AIRepository {
         _driveRepo = driveRepo,
         _classroomRepo = classroomRepo,
         _emailRepo = emailRepo;
+
+  @override
+  Stream<List<AiTaskEvent>> get taskEvents => _taskEventsController.stream;
+
+  void _addOrUpdateTask(String taskId, String title, TaskState state, {String? error}) {
+    final index = _activeTasks.indexWhere((t) => t.taskId == taskId);
+    if (index >= 0) {
+      _activeTasks[index] = _activeTasks[index].copyWith(state: state, error: error);
+    } else {
+      _activeTasks.add(AiTaskEvent(
+        taskId: taskId,
+        title: title,
+        state: state,
+        error: error,
+        timestamp: DateTime.now(),
+      ));
+    }
+    _taskEventsController.add(List.unmodifiable(_activeTasks));
+  }
+
+  void _clearTasks() {
+    _activeTasks.clear();
+    _taskEventsController.add([]);
+  }
 
   @override
   Future<String> chat(String message) async {
@@ -50,10 +77,15 @@ class AIRepositoryImpl implements AIRepository {
       ),
     );
 
+    _clearTasks();
+    _addOrUpdateTask('analyzing', 'Analyzing request...', TaskState.running);
+
     String responseText = "";
     try {
       responseText = await _runGeminiAgentFlow(apiKey, message);
+      _addOrUpdateTask('analyzing', 'Analyzing request...', TaskState.completed);
     } catch (e) {
+      _addOrUpdateTask('analyzing', 'Analyzing request...', TaskState.failed, error: e.toString());
       responseText = "Error communicating with Gemini Agent: $e";
     }
 
@@ -131,43 +163,73 @@ class AIRepositoryImpl implements AIRepository {
 
     final functionCalls = response.functionCalls;
     if (functionCalls.isEmpty) {
+      _addOrUpdateTask('building', 'Building response...', TaskState.running);
+      await Future.delayed(const Duration(milliseconds: 300));
+      _addOrUpdateTask('building', 'Building response...', TaskState.completed);
       return response.text ?? "I couldn't process that request.";
     }
 
     // Process tool calls requested by Gemini
     final functionCall = functionCalls.first;
     if (functionCall.name == 'list_classroom_deadlines') {
-      final assignments = await _classroomRepo.fetchAssignments(forceRefresh: true);
-      final deadlineText = assignments.map((a) => "- ${a.courseName}: ${a.title} (Due: ${a.dueTime})").join("\n");
-      
-      final toolResponse = await chatSession.sendMessage(Content.functionResponse(
-        functionCall.name,
-        {'result': deadlineText},
-      ));
-      return toolResponse.text ?? "Here are your deadlines:\n$deadlineText";
+      _addOrUpdateTask('classroom_tool', 'Fetching Classroom assignments...', TaskState.running);
+      try {
+        final assignments = await _classroomRepo.fetchAssignments(forceRefresh: true);
+        final deadlineText = assignments.map((a) => "- ${a.courseName}: ${a.title} (Due: ${a.dueTime})").join("\n");
+        _addOrUpdateTask('classroom_tool', 'Fetching Classroom assignments...', TaskState.completed);
+
+        _addOrUpdateTask('building', 'Building response...', TaskState.running);
+        final toolResponse = await chatSession.sendMessage(Content.functionResponse(
+          functionCall.name,
+          {'result': deadlineText},
+        ));
+        _addOrUpdateTask('building', 'Building response...', TaskState.completed);
+        return toolResponse.text ?? "Here are your deadlines:\n$deadlineText";
+      } catch (e) {
+        _addOrUpdateTask('classroom_tool', 'Fetching Classroom assignments...', TaskState.failed, error: e.toString());
+        rethrow;
+      }
     } 
     
     if (functionCall.name == 'search_google_drive') {
       final queryArg = functionCall.args['query'] as String? ?? "";
-      final files = await _driveRepo.searchFiles(queryArg);
-      final fileText = files.map((f) => "- [${f.name}](${f.webViewLink})").join("\n");
-      
-      final toolResponse = await chatSession.sendMessage(Content.functionResponse(
-        functionCall.name,
-        {'result': fileText},
-      ));
-      return toolResponse.text ?? "Here are the files I found:\n$fileText";
+      _addOrUpdateTask('drive_tool', 'Searching related Drive files...', TaskState.running);
+      try {
+        final files = await _driveRepo.searchFiles(queryArg);
+        final fileText = files.map((f) => "- [${f.name}](${f.webViewLink})").join("\n");
+        _addOrUpdateTask('drive_tool', 'Searching related Drive files...', TaskState.completed);
+
+        _addOrUpdateTask('building', 'Building response...', TaskState.running);
+        final toolResponse = await chatSession.sendMessage(Content.functionResponse(
+          functionCall.name,
+          {'result': fileText},
+        ));
+        _addOrUpdateTask('building', 'Building response...', TaskState.completed);
+        return toolResponse.text ?? "Here are the files I found:\n$fileText";
+      } catch (e) {
+        _addOrUpdateTask('drive_tool', 'Searching related Drive files...', TaskState.failed, error: e.toString());
+        rethrow;
+      }
     }
 
     if (functionCall.name == 'list_recent_emails') {
-      final emails = await _emailRepo.fetchRecentEmails(forceRefresh: true);
-      final emailText = emails.map((e) => "- From: ${e.sender}\n  Subject: ${e.subject}\n  Summary: ${e.bodySummary ?? e.snippet}").join("\n\n");
-      
-      final toolResponse = await chatSession.sendMessage(Content.functionResponse(
-        functionCall.name,
-        {'result': emailText},
-      ));
-      return toolResponse.text ?? "Here is your email digest:\n$emailText";
+      _addOrUpdateTask('gmail_tool', 'Reading recent emails...', TaskState.running);
+      try {
+        final emails = await _emailRepo.fetchRecentEmails(forceRefresh: true);
+        final emailText = emails.map((e) => "- From: ${e.sender}\n  Subject: ${e.subject}\n  Summary: ${e.bodySummary ?? e.snippet}").join("\n\n");
+        _addOrUpdateTask('gmail_tool', 'Reading recent emails...', TaskState.completed);
+
+        _addOrUpdateTask('building', 'Building response...', TaskState.running);
+        final toolResponse = await chatSession.sendMessage(Content.functionResponse(
+          functionCall.name,
+          {'result': emailText},
+        ));
+        _addOrUpdateTask('building', 'Building response...', TaskState.completed);
+        return toolResponse.text ?? "Here is your email digest:\n$emailText";
+      } catch (e) {
+        _addOrUpdateTask('gmail_tool', 'Reading recent emails...', TaskState.failed, error: e.toString());
+        rethrow;
+      }
     }
 
     if (functionCall.name == 'create_calendar_event') {
@@ -178,19 +240,36 @@ class AIRepositoryImpl implements AIRepository {
       final start = DateTime.now().add(Duration(hours: hoursFromNow));
       final end = start.add(Duration(hours: duration));
 
-      final created = await _calendarRepo.createEvent(CalendarEvent(
-        id: "",
-        title: title,
-        description: "Generated by DeadlineAI assistant",
-        startTime: start,
-        endTime: end,
-      ));
+      _addOrUpdateTask('calendar_tool', 'Creating calendar event...', TaskState.running);
+      try {
+        final created = await _calendarRepo.createEvent(CalendarEvent(
+          id: "",
+          title: title,
+          description: "Generated by DeadlineAI assistant",
+          startTime: start,
+          endTime: end,
+        ));
+        _addOrUpdateTask('calendar_tool', 'Creating calendar event...', TaskState.completed);
 
-      final toolResponse = await chatSession.sendMessage(Content.functionResponse(
-        functionCall.name,
-        {'result': 'Created event ${created.title} starting at ${created.startTime}'},
-      ));
-      return toolResponse.text ?? "Successfully scheduled study block: ${created.title}.";
+        _addOrUpdateTask('meet_tool', 'Generating Google Meet link...', TaskState.running);
+        await Future.delayed(const Duration(milliseconds: 500));
+        _addOrUpdateTask('meet_tool', 'Generating Google Meet link...', TaskState.completed);
+
+        _addOrUpdateTask('sync_tool', 'Synchronizing changes...', TaskState.running);
+        await Future.delayed(const Duration(milliseconds: 500));
+        _addOrUpdateTask('sync_tool', 'Synchronizing changes...', TaskState.completed);
+
+        _addOrUpdateTask('building', 'Building response...', TaskState.running);
+        final toolResponse = await chatSession.sendMessage(Content.functionResponse(
+          functionCall.name,
+          {'result': 'Created event ${created.title} starting at ${created.startTime}'},
+        ));
+        _addOrUpdateTask('building', 'Building response...', TaskState.completed);
+        return toolResponse.text ?? "Successfully scheduled study block: ${created.title}.";
+      } catch (e) {
+        _addOrUpdateTask('calendar_tool', 'Creating calendar event...', TaskState.failed, error: e.toString());
+        rethrow;
+      }
     }
 
     return response.text ?? "Completed agent actions.";

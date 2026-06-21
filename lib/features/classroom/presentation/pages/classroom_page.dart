@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:deadlinehub/core/theme/theme.dart';
 import 'package:deadlinehub/core/providers/providers.dart';
 import 'package:deadlinehub/features/classroom/domain/entities/classroom_assignment.dart';
@@ -23,12 +24,27 @@ class _ClassroomPageState extends ConsumerState<ClassroomPage> {
   }
 
   Future<void> _loadAssignments({bool force = false}) async {
-    setState(() => _isLoading = true);
+    final cacheRepo = ref.read(cacheRepositoryProvider);
+    final cached = await cacheRepo.getClassroomAssignments();
+    if (cached.isNotEmpty) {
+      setState(() {
+        _assignments = cached;
+        _isLoading = false;
+      });
+    } else {
+      setState(() {
+        _isLoading = true;
+      });
+    }
+
     try {
-      final res = await ref.read(classroomRepositoryProvider).fetchAssignments(forceRefresh: force);
-      setState(() => _assignments = res);
+      final remote = await ref.read(classroomRepositoryProvider).fetchAssignments(forceRefresh: force);
+      setState(() {
+        _assignments = remote;
+      });
+      await cacheRepo.saveClassroomAssignments(remote);
     } catch (e) {
-      //
+      // Keep displaying cached data on failure
     } finally {
       setState(() => _isLoading = false);
     }
@@ -46,6 +62,15 @@ class _ClassroomPageState extends ConsumerState<ClassroomPage> {
         return item;
       }).toList();
     });
+
+    if (mounted && nextState) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('"${ass.title}" ditandai sebagai selesai.'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
 
     try {
       await ref.read(classroomRepositoryProvider).submitAssignment(ass.courseId, ass.id, 'mock_sub_id');
@@ -76,6 +101,8 @@ class _ClassroomPageState extends ConsumerState<ClassroomPage> {
   @override
   Widget build(BuildContext context) {
     _sortAssignments();
+
+    final activeAssignments = _assignments.where((ass) => !ass.isSubmitted).toList();
 
     return Scaffold(
       body: Padding(
@@ -123,12 +150,17 @@ class _ClassroomPageState extends ConsumerState<ClassroomPage> {
             Expanded(
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator(color: OneDarkTheme.primary))
-                  : _assignments.isEmpty
-                      ? const Center(child: Text('No deadlines found.', style: TextStyle(color: OneDarkTheme.textDark)))
+                  : activeAssignments.isEmpty
+                      ? const Center(
+                          child: Text(
+                            'No classroom assignments available.',
+                            style: TextStyle(color: OneDarkTheme.textMain, fontSize: 13),
+                          ),
+                        )
                       : ListView.builder(
-                          itemCount: _assignments.length,
+                          itemCount: activeAssignments.length,
                           itemBuilder: (context, index) {
-                            final ass = _assignments[index];
+                            final ass = activeAssignments[index];
                             return _AssignmentCard(
                               assignment: ass,
                               onToggle: () => _toggleSubmitted(ass),
@@ -167,11 +199,6 @@ class _AssignmentCard extends StatelessWidget {
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: Checkbox(
-          value: assignment.isSubmitted,
-          activeColor: OneDarkTheme.success,
-          onChanged: (_) => onToggle(),
-        ),
         title: Row(
           children: [
             Text(
@@ -186,9 +213,8 @@ class _AssignmentCard extends StatelessWidget {
             Expanded(
               child: Text(
                 assignment.title,
-                style: TextStyle(
-                  color: assignment.isSubmitted ? OneDarkTheme.textDark : OneDarkTheme.textLight,
-                  decoration: assignment.isSubmitted ? TextDecoration.lineThrough : null,
+                style: const TextStyle(
+                  color: OneDarkTheme.textLight,
                   fontWeight: FontWeight.bold,
                   fontSize: 13.5,
                 ),
@@ -238,11 +264,38 @@ class _AssignmentCard extends StatelessWidget {
             ],
           ),
         ),
-        trailing: IconButton(
-          icon: const Icon(Icons.open_in_new, size: 16, color: OneDarkTheme.textMain),
-          onPressed: () {
-            // Launches remote assignment link
-          },
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextButton(
+              onPressed: onToggle,
+              child: const Text(
+                'Selesai',
+                style: TextStyle(
+                  color: OneDarkTheme.success,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            TextButton(
+              onPressed: () async {
+                final uri = Uri.parse(assignment.alternateLink);
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                }
+              },
+              child: const Text(
+                'Buka',
+                style: TextStyle(
+                  color: OneDarkTheme.primary,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

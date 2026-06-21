@@ -250,8 +250,8 @@ class _ChatBubble extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              content,
+            _MarkdownText(
+              text: content,
               style: const TextStyle(color: OneDarkTheme.textLight, fontSize: 13.5, height: 1.45),
             ),
             const SizedBox(height: 6),
@@ -265,6 +265,230 @@ class _ChatBubble extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _MarkdownText extends StatelessWidget {
+  final String text;
+  final TextStyle style;
+
+  const _MarkdownText({
+    required this.text,
+    required this.style,
+  });
+
+  List<InlineSpan> _parseInline(String inlineText, TextStyle baseStyle) {
+    final List<InlineSpan> spans = [];
+    final RegExp exp = RegExp(r'(\*\*.*?\*\*|\*.*?\*|`.*?`)');
+    int start = 0;
+
+    final matches = exp.allMatches(inlineText);
+    for (final match in matches) {
+      if (match.start > start) {
+        spans.add(TextSpan(
+          text: inlineText.substring(start, match.start),
+          style: baseStyle,
+        ));
+      }
+
+      final matchedText = match.group(0)!;
+      if (matchedText.startsWith('**') && matchedText.endsWith('**')) {
+        spans.add(TextSpan(
+          text: matchedText.substring(2, matchedText.length - 2),
+          style: baseStyle.copyWith(fontWeight: FontWeight.bold),
+        ));
+      } else if (matchedText.startsWith('*') && matchedText.endsWith('*')) {
+        spans.add(TextSpan(
+          text: matchedText.substring(1, matchedText.length - 1),
+          style: baseStyle.copyWith(fontStyle: FontStyle.italic),
+        ));
+      } else if (matchedText.startsWith('`') && matchedText.endsWith('`')) {
+        spans.add(TextSpan(
+          text: matchedText.substring(1, matchedText.length - 1),
+          style: baseStyle.copyWith(
+            fontFamily: 'monospace',
+            backgroundColor: Colors.white.withOpacity(0.08),
+          ),
+        ));
+      }
+
+      start = match.end;
+    }
+
+    if (start < inlineText.length) {
+      spans.add(TextSpan(
+        text: inlineText.substring(start),
+        style: baseStyle,
+      ));
+    }
+
+    return spans;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final List<Widget> children = [];
+    final lines = text.split('\n');
+    
+    bool inCodeBlock = false;
+    List<String> codeBlockLines = [];
+
+    for (var i = 0; i < lines.length; i++) {
+      final line = lines[i];
+
+      if (line.trim().startsWith('```')) {
+        if (inCodeBlock) {
+          // End of code block
+          final codeContent = codeBlockLines.join('\n');
+          children.add(
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.symmetric(vertical: 6),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E222A),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: OneDarkTheme.border),
+              ),
+              child: SelectableText(
+                codeContent,
+                style: style.copyWith(
+                  fontFamily: 'monospace',
+                  fontSize: 12,
+                  color: const Color(0xFFABB2BF),
+                ),
+              ),
+            ),
+          );
+          codeBlockLines.clear();
+          inCodeBlock = false;
+        } else {
+          inCodeBlock = true;
+        }
+        continue;
+      }
+
+      if (inCodeBlock) {
+        codeBlockLines.add(line);
+        continue;
+      }
+
+      final trimmed = line.trim();
+
+      // Header H1
+      if (trimmed.startsWith('# ')) {
+        children.add(
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Text(
+              trimmed.substring(2),
+              style: style.copyWith(
+                fontSize: style.fontSize != null ? style.fontSize! + 4 : 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        );
+      }
+      // Header H2
+      else if (trimmed.startsWith('## ')) {
+        children.add(
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Text(
+              trimmed.substring(3),
+              style: style.copyWith(
+                fontSize: style.fontSize != null ? style.fontSize! + 2 : 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        );
+      }
+      // Header H3
+      else if (trimmed.startsWith('### ')) {
+        children.add(
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Text(
+              trimmed.substring(4),
+              style: style.copyWith(
+                fontSize: style.fontSize != null ? style.fontSize! + 1 : 15,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        );
+      }
+      // Bullet list
+      else if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+        final contentText = trimmed.substring(2);
+        children.add(
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 3),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('• ', style: style.copyWith(fontWeight: FontWeight.bold)),
+                Expanded(
+                  child: RichText(
+                    text: TextSpan(
+                      children: _parseInline(contentText, style),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+      // Regular paragraph
+      else if (trimmed.isNotEmpty) {
+        children.add(
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 3),
+            child: RichText(
+              text: TextSpan(
+                children: _parseInline(line, style),
+              ),
+            ),
+          ),
+        );
+      } else {
+        children.add(const SizedBox(height: 6));
+      }
+    }
+
+    // In case code block wasn't closed properly
+    if (inCodeBlock && codeBlockLines.isNotEmpty) {
+      final codeContent = codeBlockLines.join('\n');
+      children.add(
+        Container(
+          width: double.infinity,
+          margin: const EdgeInsets.symmetric(vertical: 6),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E222A),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: OneDarkTheme.border),
+          ),
+          child: SelectableText(
+            codeContent,
+            style: style.copyWith(
+              fontFamily: 'monospace',
+              fontSize: 12,
+              color: const Color(0xFFABB2BF),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: children,
     );
   }
 }

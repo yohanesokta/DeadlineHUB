@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:googleapis_auth/auth_io.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
@@ -26,6 +28,7 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<void> _init() async {
     final client = await getAuthClient();
     if (client != null) {
+      _fetchAndSaveUserProfile(client.credentials.accessToken.data);
       _authStreamController.add(true);
     } else {
       _authStreamController.add(false);
@@ -75,9 +78,13 @@ class AuthRepositoryImpl implements AuthRepository {
       }
       await _secureStorage.saveExpiry(client.credentials.accessToken.expiry);
 
+      // Fetch user profile immediately
+      await _fetchAndSaveUserProfile(client.credentials.accessToken.data);
+
       client.credentialUpdates.listen((creds) async {
         await _secureStorage.saveAccessToken(creds.accessToken.data);
         await _secureStorage.saveExpiry(creds.accessToken.expiry);
+        await _fetchAndSaveUserProfile(creds.accessToken.data);
       });
 
       _authStreamController.add(true);
@@ -143,9 +150,55 @@ class AuthRepositoryImpl implements AuthRepository {
     client.credentialUpdates.listen((creds) async {
       await _secureStorage.saveAccessToken(creds.accessToken.data);
       await _secureStorage.saveExpiry(creds.accessToken.expiry);
+      await _fetchAndSaveUserProfile(creds.accessToken.data);
     });
 
     _cachedClient = client;
     return client;
+  }
+
+  Future<void> _fetchAndSaveUserProfile(String accessToken) async {
+    try {
+      final response = await http.get(
+        Uri.parse('https://www.googleapis.com/oauth2/v3/userinfo'),
+        headers: {'Authorization': 'Bearer $accessToken'},
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final name = data['name'] as String? ?? '';
+        final email = data['email'] as String? ?? '';
+        final picture = data['picture'] as String? ?? '';
+        await _secureStorage.saveUserName(name);
+        await _secureStorage.saveUserEmail(email);
+        await _secureStorage.saveUserPicture(picture);
+      } else {
+        debugPrint('Failed to fetch user info: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      debugPrint('Error fetching user info: $e');
+    }
+  }
+
+  @override
+  Future<String?> getUserName() async {
+    return await _secureStorage.getUserName();
+  }
+
+  @override
+  Future<String?> getUserEmail() async {
+    return await _secureStorage.getUserEmail();
+  }
+
+  @override
+  Future<String?> getUserPicture() async {
+    return await _secureStorage.getUserPicture();
+  }
+
+  @override
+  Future<void> refreshProfile() async {
+    final token = await getAccessToken();
+    if (token != null) {
+      await _fetchAndSaveUserProfile(token);
+    }
   }
 }

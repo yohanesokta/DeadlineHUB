@@ -1,10 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:deadlinehub/core/theme/theme.dart';
 import 'package:deadlinehub/core/providers/providers.dart';
-import 'package:deadlinehub/presentation/providers/integration_status_provider.dart';
-import 'package:deadlinehub/presentation/pages/auth_gate.dart';
+import 'package:deadlinehub/core/services/sync/sync_status_repository.dart';
+import 'package:deadlinehub/features/ai/domain/repositories/ai_repository.dart';
 
 class MainLayout extends ConsumerStatefulWidget {
   final Widget child;
@@ -17,6 +18,21 @@ class MainLayout extends ConsumerStatefulWidget {
 class _MainLayoutState extends ConsumerState<MainLayout> {
   final TextEditingController _promptController = TextEditingController();
   bool _rightPanelExpanded = true;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(syncCoordinatorProvider).startPeriodicSync();
+    });
+  }
+
+  @override
+  void dispose() {
+    ref.read(syncCoordinatorProvider).stopPeriodicSync();
+    _promptController.dispose();
+    super.dispose();
+  }
 
   int _getSelectedIndex(BuildContext context) {
     final location = GoRouterState.of(context).uri.toString();
@@ -67,6 +83,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
   Widget build(BuildContext context) {
     final selectedIndex = _getSelectedIndex(context);
     final theme = Theme.of(context);
+    final profileAsync = ref.watch(userProfileProvider);
 
     return Scaffold(
       backgroundColor: OneDarkTheme.background,
@@ -161,41 +178,71 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
                 const Divider(),
                 Padding(
                   padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      const CircleAvatar(
-                        radius: 16,
-                        backgroundColor: OneDarkTheme.border,
-                        child: Text(
-                          'S',
-                          style: TextStyle(color: OneDarkTheme.primary, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Student User',
-                              style: TextStyle(color: OneDarkTheme.textLight, fontSize: 13, fontWeight: FontWeight.bold),
-                              overflow: TextOverflow.ellipsis,
+                  child: profileAsync.when(
+                    data: (profile) {
+                      final name = profile?.name ?? 'Student User';
+                      final email = profile?.email ?? 'student@university.edu';
+                      final picture = profile?.picture ?? '';
+                      final hasPicture = picture.isNotEmpty;
+
+                      return Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 16,
+                            backgroundColor: OneDarkTheme.border,
+                            backgroundImage: hasPicture ? NetworkImage(picture) : null,
+                            child: !hasPicture
+                                ? Text(
+                                    name.isNotEmpty ? name[0].toUpperCase() : 'S',
+                                    style: const TextStyle(color: OneDarkTheme.primary, fontWeight: FontWeight.bold),
+                                  )
+                                : null,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  name,
+                                  style: const TextStyle(color: OneDarkTheme.textLight, fontSize: 13, fontWeight: FontWeight.bold),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                Text(
+                                  email,
+                                  style: const TextStyle(color: OneDarkTheme.textDark, fontSize: 11),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
                             ),
-                            Text(
-                              'student@university.edu',
-                              style: TextStyle(color: OneDarkTheme.textDark, fontSize: 11),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.logout, size: 16, color: OneDarkTheme.textMain),
+                            onPressed: () {
+                              ref.read(authRepositoryProvider).signOut();
+                            },
+                          ),
+                        ],
+                      );
+                    },
+                    loading: () => Row(
+                      children: const [
+                        SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: OneDarkTheme.primary),
                         ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.logout, size: 16, color: OneDarkTheme.textMain),
-                        onPressed: () {
-                          ref.read(authRepositoryProvider).signOut();
-                        },
-                      ),
-                    ],
+                        SizedBox(width: 12),
+                        Text('Loading profile...', style: TextStyle(color: OneDarkTheme.textDark, fontSize: 11)),
+                      ],
+                    ),
+                    error: (err, stack) => Row(
+                      children: const [
+                        Icon(Icons.error_outline, color: OneDarkTheme.error, size: 16),
+                        SizedBox(width: 12),
+                        Text('Error loading profile', style: TextStyle(color: OneDarkTheme.error, fontSize: 11)),
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -249,28 +296,34 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     color: OneDarkTheme.cardBg,
-                    child: Row(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _promptController,
-                            style: const TextStyle(fontSize: 14, color: OneDarkTheme.textLight),
-                            decoration: const InputDecoration(
-                              hintText: 'Ask DeadlineAI anything... (e.g. show deadlines, schedule study session)',
-                              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _promptController,
+                                style: const TextStyle(fontSize: 14, color: OneDarkTheme.textLight),
+                                decoration: const InputDecoration(
+                                  hintText: 'Ask DeadlineAI anything... (e.g. show deadlines, schedule study session)',
+                                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                ),
+                                onSubmitted: (_) => _submitGlobalPrompt(),
+                              ),
                             ),
-                            onSubmitted: (_) => _submitGlobalPrompt(),
-                          ),
+                            const SizedBox(width: 12),
+                            IconButton.filled(
+                              onPressed: _submitGlobalPrompt,
+                              icon: const Icon(Icons.arrow_upward, size: 18),
+                              style: IconButton.styleFrom(
+                                backgroundColor: OneDarkTheme.primary,
+                                foregroundColor: Colors.white,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 12),
-                        IconButton.filled(
-                          onPressed: _submitGlobalPrompt,
-                          icon: const Icon(Icons.arrow_upward, size: 18),
-                          style: IconButton.styleFrom(
-                            backgroundColor: OneDarkTheme.primary,
-                            foregroundColor: Colors.white,
-                          ),
-                        ),
+                        const _AiTaskTimeline(),
                       ],
                     ),
                   ),
@@ -464,12 +517,42 @@ class _QuickStatCard extends StatelessWidget {
   }
 }
 
-class _IntegrationStatusCenter extends ConsumerWidget {
+class _IntegrationStatusCenter extends ConsumerStatefulWidget {
   const _IntegrationStatusCenter();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final status = ref.watch(integrationStatusProvider);
+  ConsumerState<_IntegrationStatusCenter> createState() => _IntegrationStatusCenterState();
+}
+
+class _IntegrationStatusCenterState extends ConsumerState<_IntegrationStatusCenter> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  String _formatTimeAgo(DateTime? time) {
+    if (time == null) return 'Never';
+    final diff = DateTime.now().difference(time);
+    if (diff.inSeconds < 10) return 'Just now';
+    if (diff.inSeconds < 60) return '${diff.inSeconds}s ago';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    return '${diff.inHours}h ago';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final syncStatusAsync = ref.watch(syncStatusProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -486,184 +569,242 @@ class _IntegrationStatusCenter extends ConsumerWidget {
             ),
           ),
         ),
-        _StatusTile(
-          label: 'Google Connected',
-          failedLabel: 'Google Auth Failed',
-          state: status.google,
-          error: status.googleError,
-          onTap: () {
-            ref.read(authGateProvider.notifier).reset();
+        syncStatusAsync.when(
+          data: (status) {
+            return Column(
+              children: [
+                _buildSyncTile(
+                  label: 'Calendar',
+                  status: status.calendar,
+                  retryCallback: () => ref.read(syncCoordinatorProvider).syncCalendar(),
+                ),
+                _buildSyncTile(
+                  label: 'Drive',
+                  status: status.drive,
+                  retryCallback: () => ref.read(syncCoordinatorProvider).syncDrive(),
+                ),
+                _buildSyncTile(
+                  label: 'Classroom',
+                  status: status.classroom,
+                  retryCallback: () => ref.read(syncCoordinatorProvider).syncClassroom(),
+                ),
+                _buildSyncTile(
+                  label: 'Gmail',
+                  status: status.gmail,
+                  retryCallback: () => ref.read(syncCoordinatorProvider).syncGmail(),
+                ),
+              ],
+            );
           },
-        ),
-        _StatusTile(
-          label: 'Gemini Connected',
-          failedLabel: 'Gemini Key Invalid',
-          state: status.gemini,
-          error: status.geminiError,
-          onTap: () {
-            ref.read(authGateProvider.notifier).reset();
-          },
-        ),
-        _StatusTile(
-          label: 'Calendar Synced',
-          failedLabel: 'Calendar Sync Failed',
-          permissionLabel: 'Calendar Permission Missing',
-          state: status.calendar,
-          error: status.calendarError,
-          onTap: () {
-            ref.read(authGateProvider.notifier).reset();
-          },
-        ),
-        _StatusTile(
-          label: 'Drive Synced',
-          failedLabel: 'Drive Sync Failed',
-          permissionLabel: 'Drive Permission Missing',
-          state: status.drive,
-          error: status.driveError,
-          onTap: () {
-            ref.read(authGateProvider.notifier).reset();
-          },
-        ),
-        _StatusTile(
-          label: 'Gmail Synced',
-          failedLabel: 'Gmail Sync Failed',
-          permissionLabel: 'Gmail Permission Missing',
-          state: status.gmail,
-          error: status.gmailError,
-          onTap: () {
-            ref.read(authGateProvider.notifier).reset();
-          },
-        ),
-        _StatusTile(
-          label: 'Classroom Synced',
-          failedLabel: 'Classroom Sync Failed',
-          permissionLabel: 'Classroom Permission Missing',
-          state: status.classroom,
-          error: status.classroomError,
-          onTap: () {
-            ref.read(authGateProvider.notifier).reset();
-          },
+          loading: () => const Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Center(
+              child: SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2, color: OneDarkTheme.primary),
+              ),
+            ),
+          ),
+          error: (e, s) => Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            child: Text(
+              'Error loading sync status: $e',
+              style: const TextStyle(color: OneDarkTheme.error, fontSize: 11),
+            ),
+          ),
         ),
         const SizedBox(height: 12),
       ],
     );
   }
-}
 
-class _StatusTile extends StatelessWidget {
-  final String label;
-  final String failedLabel;
-  final String? permissionLabel;
-  final IntegrationStatusState state;
-  final String? error;
-  final VoidCallback onTap;
+  Widget _buildSyncTile({
+    required String label,
+    required ModuleSyncStatus status,
+    required VoidCallback retryCallback,
+  }) {
+    String stateText = '';
+    Color textColor = OneDarkTheme.textMain;
+    Widget? actionWidget;
 
-  const _StatusTile({
-    required this.label,
-    required this.failedLabel,
-    this.permissionLabel,
-    required this.state,
-    this.error,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    Color iconColor;
-    IconData iconData;
-    String displayLabel = label;
-    bool isClickable = false;
-
-    switch (state) {
-      case IntegrationStatusState.connected:
-        iconData = Icons.check_circle_outline;
-        iconColor = OneDarkTheme.success;
+    switch (status.state) {
+      case SyncState.idle:
+        stateText = 'Synced ${_formatTimeAgo(status.lastSynced)}';
+        textColor = OneDarkTheme.textMain;
         break;
-      case IntegrationStatusState.failed:
-        iconData = Icons.warning_amber_rounded;
-        iconColor = OneDarkTheme.error;
-        displayLabel = failedLabel;
-        isClickable = true;
+      case SyncState.syncing:
+        stateText = 'Syncing...';
+        textColor = OneDarkTheme.primary;
         break;
-      case IntegrationStatusState.permissionMissing:
-        iconData = Icons.warning_amber_rounded;
-        iconColor = OneDarkTheme.warning;
-        displayLabel = permissionLabel ?? failedLabel;
-        isClickable = true;
-        break;
-      case IntegrationStatusState.loading:
-        iconData = Icons.hourglass_empty;
-        iconColor = OneDarkTheme.textDark;
+      case SyncState.failed:
+        stateText = '$label Sync Failed';
+        textColor = OneDarkTheme.error;
+        actionWidget = InkWell(
+          onTap: retryCallback,
+          child: const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            child: Text(
+              'Retry',
+              style: TextStyle(
+                color: OneDarkTheme.cyan,
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                decoration: TextDecoration.underline,
+              ),
+            ),
+          ),
+        );
         break;
     }
 
-    Widget content = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          state == IntegrationStatusState.loading
-              ? const SizedBox(
-                  width: 14,
-                  height: 14,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 1.5,
-                    color: OneDarkTheme.textDark,
-                  ),
-                )
-              : Icon(iconData, color: iconColor, size: 14),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              displayLabel,
-              style: TextStyle(
-                color: isClickable ? iconColor : OneDarkTheme.textMain,
-                fontSize: 12,
-                fontWeight: isClickable ? FontWeight.bold : FontWeight.normal,
+          Row(
+            children: [
+              Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: status.state == SyncState.syncing
+                      ? OneDarkTheme.primary
+                      : status.state == SyncState.failed
+                          ? OneDarkTheme.error
+                          : OneDarkTheme.success,
+                  shape: BoxShape.circle,
+                ),
               ),
-              overflow: TextOverflow.ellipsis,
-            ),
+              const SizedBox(width: 10),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: OneDarkTheme.textLight,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ),
-          if (isClickable)
-            Icon(Icons.refresh, color: iconColor, size: 12),
+          Row(
+            children: [
+              Text(
+                stateText,
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 11,
+                ),
+              ),
+              if (actionWidget != null) ...[
+                const SizedBox(width: 8),
+                actionWidget,
+              ],
+            ],
+          ),
         ],
       ),
     );
+  }
+}
 
-    if (isClickable) {
-      return InkWell(
-        onTap: () {
-          showDialog(
-            context: context,
-            builder: (context) => AlertDialog(
-              backgroundColor: OneDarkTheme.surface,
-              title: const Text('Resolve Connection Issue', style: TextStyle(color: OneDarkTheme.textLight)),
-              content: Text(
-                'This integration is currently failing with the following error:\n\n'
-                '${error ?? "Unknown error"}\n\n'
-                'Would you like to reset authentication credentials to resolve this issue?',
-                style: const TextStyle(color: OneDarkTheme.textMain, fontSize: 13, height: 1.4),
+class _AiTaskTimeline extends ConsumerWidget {
+  const _AiTaskTimeline();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final eventsAsync = ref.watch(aiTaskEventsProvider);
+
+    return eventsAsync.when(
+      data: (tasks) {
+        if (tasks.isEmpty) return const SizedBox.shrink();
+
+        return Container(
+          padding: const EdgeInsets.only(top: 12, left: 8, right: 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: Text(
+                  'AI ACTIVITY LOG',
+                  style: TextStyle(
+                    color: OneDarkTheme.textDark,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.1,
+                  ),
+                ),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Cancel', style: TextStyle(color: OneDarkTheme.textDark)),
-                ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: OneDarkTheme.primary),
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    onTap();
-                  },
-                  child: const Text('Reset & Re-authenticate', style: TextStyle(color: Colors.white)),
-                ),
-              ],
-            ),
-          );
-        },
-        child: content,
-      );
-    }
+              const SizedBox(height: 6),
+              ...tasks.map((task) {
+                IconData icon;
+                Color color;
+                switch (task.state) {
+                  case TaskState.pending:
+                    icon = Icons.circle_outlined;
+                    color = OneDarkTheme.textDark;
+                    break;
+                  case TaskState.running:
+                    icon = Icons.play_circle_outline_rounded;
+                    color = OneDarkTheme.primary;
+                    break;
+                  case TaskState.completed:
+                    icon = Icons.check_circle_outline_rounded;
+                    color = OneDarkTheme.success;
+                    break;
+                  case TaskState.failed:
+                    icon = Icons.error_outline_rounded;
+                    color = OneDarkTheme.error;
+                    break;
+                }
 
-    return content;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  child: Row(
+                    children: [
+                      if (task.state == TaskState.running)
+                        const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: OneDarkTheme.primary,
+                          ),
+                        )
+                      else
+                        Icon(icon, size: 14, color: color),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          task.title,
+                          style: TextStyle(
+                            color: task.state == TaskState.running
+                                ? OneDarkTheme.textLight
+                                : OneDarkTheme.textMain,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        task.state.name.toUpperCase(),
+                        style: TextStyle(
+                          color: color,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            ],
+          ),
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (e, s) => const SizedBox.shrink(),
+    );
   }
 }

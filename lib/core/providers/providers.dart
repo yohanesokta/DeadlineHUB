@@ -13,6 +13,9 @@ import '../../features/email/domain/repositories/email_repository.dart';
 import '../../features/email/infrastructure/repositories/email_repository_impl.dart';
 import '../../features/ai/domain/repositories/ai_repository.dart';
 import '../../features/ai/infrastructure/repositories/ai_repository_impl.dart';
+import '../services/sync/cache_repository.dart';
+import '../services/sync/sync_status_repository.dart';
+import '../services/sync/sync_coordinator.dart';
 
 final databaseProvider = Provider<AppDatabase>((ref) {
   final db = AppDatabase();
@@ -69,4 +72,57 @@ final aiRepositoryProvider = Provider<AIRepository>((ref) {
     classroomRepo: classroomRepo,
     emailRepo: emailRepo,
   );
+});
+
+final cacheRepositoryProvider = Provider<CacheRepository>((ref) {
+  final db = ref.watch(databaseProvider);
+  return CacheRepositoryImpl(db);
+});
+
+final syncStatusRepositoryProvider = Provider<SyncStatusRepository>((ref) {
+  return SyncStatusRepositoryImpl();
+});
+
+final syncCoordinatorProvider = Provider<SyncCoordinator>((ref) {
+  final cache = ref.watch(cacheRepositoryProvider);
+  final status = ref.watch(syncStatusRepositoryProvider);
+  return SyncCoordinator(ref, cache, status);
+});
+
+class UserProfile {
+  final String name;
+  final String email;
+  final String picture;
+
+  const UserProfile({
+    required this.name,
+    required this.email,
+    required this.picture,
+  });
+}
+
+final userProfileProvider = FutureProvider<UserProfile?>((ref) async {
+  final authRepo = ref.watch(authRepositoryProvider);
+  // We check isAuthenticated first
+  final isAuthed = await authRepo.isAuthenticated();
+  if (!isAuthed) return null;
+  final name = await authRepo.getUserName();
+  final email = await authRepo.getUserEmail();
+  final picture = await authRepo.getUserPicture();
+  return UserProfile(
+    name: name ?? '',
+    email: email ?? '',
+    picture: picture ?? '',
+  );
+});
+
+final syncStatusProvider = StreamProvider<SyncStatusState>((ref) async* {
+  final repo = ref.watch(syncStatusRepositoryProvider);
+  yield repo.status;
+  yield* repo.statusChanges;
+});
+
+final aiTaskEventsProvider = StreamProvider<List<AiTaskEvent>>((ref) {
+  final aiRepo = ref.watch(aiRepositoryProvider);
+  return aiRepo.taskEvents;
 });

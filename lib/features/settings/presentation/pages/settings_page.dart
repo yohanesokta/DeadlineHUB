@@ -135,6 +135,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final profileAsync = ref.watch(userProfileProvider);
 
     return Scaffold(
       body: SingleChildScrollView(
@@ -154,42 +155,65 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(20),
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      backgroundColor: OneDarkTheme.primary.withOpacity(0.1),
-                      radius: 20,
-                      child: const Icon(Icons.account_circle, color: OneDarkTheme.primary, size: 24),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Google Integration',
-                            style: TextStyle(color: OneDarkTheme.textLight, fontWeight: FontWeight.bold, fontSize: 14),
+                child: profileAsync.when(
+                  data: (profile) {
+                    final isConnected = _isAuthenticated && profile != null;
+                    final name = profile?.name ?? '';
+                    final email = profile?.email ?? '';
+                    final picture = profile?.picture ?? '';
+                    final hasPicture = picture.isNotEmpty;
+
+                    return Row(
+                      children: [
+                        CircleAvatar(
+                          backgroundColor: OneDarkTheme.primary.withOpacity(0.1),
+                          radius: 20,
+                          backgroundImage: hasPicture && isConnected ? NetworkImage(picture) : null,
+                          child: !hasPicture || !isConnected
+                              ? const Icon(Icons.account_circle, color: OneDarkTheme.primary, size: 24)
+                              : null,
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                isConnected ? name : 'Google Integration',
+                                style: const TextStyle(color: OneDarkTheme.textLight, fontWeight: FontWeight.bold, fontSize: 14),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                isConnected 
+                                  ? 'Status: Connected ($email)' 
+                                  : 'Status: Disconnected',
+                                style: const TextStyle(color: OneDarkTheme.textMain, fontSize: 12),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            _isAuthenticated 
-                              ? 'Status: Connected (student@university.edu)' 
-                              : 'Status: Disconnected',
-                            style: const TextStyle(color: OneDarkTheme.textMain, fontSize: 12),
+                        ),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _isAuthenticated ? OneDarkTheme.error : OneDarkTheme.primary,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                           ),
-                        ],
-                      ),
-                    ),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _isAuthenticated ? OneDarkTheme.error : OneDarkTheme.primary,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                      ),
-                      onPressed: _toggleAuth,
-                      child: Text(_isAuthenticated ? 'Sign Out' : 'Connect Account'),
-                    ),
-                  ],
+                          onPressed: _toggleAuth,
+                          child: Text(_isAuthenticated ? 'Sign Out' : 'Connect Account'),
+                        ),
+                      ],
+                    );
+                  },
+                  loading: () => const Center(
+                    child: CircularProgressIndicator(color: OneDarkTheme.primary),
+                  ),
+                  error: (e, s) => Row(
+                    children: [
+                      const Icon(Icons.error_outline, color: OneDarkTheme.error),
+                      const SizedBox(width: 16),
+                      Text('Error loading profile info: $e', style: const TextStyle(color: OneDarkTheme.error)),
+                    ],
+                  ),
                 ),
               ),
             ),

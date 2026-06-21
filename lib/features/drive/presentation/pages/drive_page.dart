@@ -24,12 +24,27 @@ class _DrivePageState extends ConsumerState<DrivePage> {
   }
 
   Future<void> _fetchFiles() async {
-    setState(() => _isLoading = true);
+    final cacheRepo = ref.read(cacheRepositoryProvider);
+    final cached = await cacheRepo.getDriveFiles();
+    if (cached.isNotEmpty) {
+      setState(() {
+        _files = cached;
+        _isLoading = false;
+      });
+    } else {
+      setState(() {
+        _isLoading = true;
+      });
+    }
+
     try {
-      final res = await ref.read(driveRepositoryProvider).fetchRecentFiles();
-      setState(() => _files = res);
+      final remote = await ref.read(driveRepositoryProvider).fetchRecentFiles();
+      setState(() {
+        _files = remote;
+      });
+      await cacheRepo.saveDriveFiles(remote);
     } catch (e) {
-      //
+      // Keep displaying cached data on failure
     } finally {
       setState(() => _isLoading = false);
     }
@@ -104,22 +119,29 @@ class _DrivePageState extends ConsumerState<DrivePage> {
             Expanded(
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator(color: OneDarkTheme.primary))
-                  : GridView.builder(
-                      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                        maxCrossAxisExtent: 220,
-                        mainAxisSpacing: 16,
-                        crossAxisSpacing: 16,
-                        childAspectRatio: 1.4,
-                      ),
-                      itemCount: _files.length,
-                      itemBuilder: (context, index) {
-                        final file = _files[index];
-                        return _FileGridItem(
-                          file: file,
-                          onTap: () => _openFile(file),
-                        );
-                      },
-                    ),
+                  : _files.isEmpty
+                      ? const Center(
+                          child: Text(
+                            'No drive files available.',
+                            style: TextStyle(color: OneDarkTheme.textMain, fontSize: 13),
+                          ),
+                        )
+                      : GridView.builder(
+                          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                            maxCrossAxisExtent: 220,
+                            mainAxisSpacing: 16,
+                            crossAxisSpacing: 16,
+                            childAspectRatio: 1.4,
+                          ),
+                          itemCount: _files.length,
+                          itemBuilder: (context, index) {
+                            final file = _files[index];
+                            return _FileGridItem(
+                              file: file,
+                              onTap: () => _openFile(file),
+                            );
+                          },
+                        ),
             ),
           ],
         ),
