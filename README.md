@@ -4,7 +4,7 @@
 Selamat datang di DeadlineHUB, benteng pertahanan terakhir IPK dan kesehatan mental mahasiswa dari kepungan tugas kuliah. Project ini dibuat khusus buat kalian yang menganut sekte "menunda adalah seni" dan mendewakan sistem kebut semalam (SKS).
 
 Aplikasi ini menyatukan Google Classroom, Google Drive, Google Calendar, dan Gmail dalam satu panel yang minimalis. Biar kelihatan sibuk coding, padahal cuma mau ngecek tugas apa saja yang belum dikumpul.
-
+gy --conversation=23512153-448f-4b58-9240-64a13f0678c7
 ---
 
 ## Tampilan Aplikasi

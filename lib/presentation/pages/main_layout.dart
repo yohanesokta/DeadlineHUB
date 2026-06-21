@@ -19,8 +19,9 @@ class MainLayout extends ConsumerStatefulWidget {
 }
 
 class _MainLayoutState extends ConsumerState<MainLayout> {
-  final TextEditingController _promptController = TextEditingController();
   bool _rightPanelExpanded = true;
+  bool _logVisible = true;
+  List<AiTaskEvent> _lastTasks = [];
 
   @override
   void initState() {
@@ -33,7 +34,6 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
   @override
   void dispose() {
     ref.read(syncCoordinatorProvider).stopPeriodicSync();
-    _promptController.dispose();
     super.dispose();
   }
 
@@ -75,18 +75,22 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
     }
   }
 
-  void _submitGlobalPrompt() {
-    final text = _promptController.text.trim();
-    if (text.isEmpty) return;
-    _promptController.clear();
-    context.go('/chat?query=${Uri.encodeComponent(text)}');
-  }
-
   @override
   Widget build(BuildContext context) {
     final selectedIndex = _getSelectedIndex(context);
     final theme = Theme.of(context);
     final profileAsync = ref.watch(userProfileProvider);
+
+    ref.listen<AsyncValue<List<AiTaskEvent>>>(aiTaskEventsProvider, (previous, next) {
+      next.whenData((tasks) {
+        if (tasks.isNotEmpty && tasks.length != _lastTasks.length) {
+          setState(() {
+            _logVisible = true;
+          });
+        }
+        _lastTasks = tasks;
+      });
+    });
 
     return Scaffold(
       backgroundColor: OneDarkTheme.background,
@@ -295,41 +299,26 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
                     child: widget.child,
                   ),
 
-                  const Divider(),
-                  // Bottom Global Prompt Box (Raycast style)
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    color: OneDarkTheme.cardBg,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: _promptController,
-                                style: const TextStyle(fontSize: 14, color: OneDarkTheme.textLight),
-                                decoration: const InputDecoration(
-                                  hintText: 'Ask DeadlineAI anything... (e.g. show deadlines, schedule study session)',
-                                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                ),
-                                onSubmitted: (_) => _submitGlobalPrompt(),
-                              ),
+                  // Bottom Global Log Box
+                  Consumer(
+                    builder: (context, ref, child) {
+                      if (!_logVisible) return const SizedBox.shrink();
+                      final events = ref.watch(aiTaskEventsProvider).value ?? [];
+                      if (events.isEmpty) return const SizedBox.shrink();
+                      return Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Divider(),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            color: OneDarkTheme.cardBg,
+                            child: _AiTaskTimeline(
+                              onClose: () => setState(() => _logVisible = false),
                             ),
-                            const SizedBox(width: 12),
-                            IconButton.filled(
-                              onPressed: _submitGlobalPrompt,
-                              icon: const Icon(Icons.arrow_upward, size: 18),
-                              style: IconButton.styleFrom(
-                                backgroundColor: OneDarkTheme.primary,
-                                foregroundColor: Colors.white,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const _AiTaskTimeline(),
-                      ],
-                    ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 ],
               ),
@@ -625,7 +614,8 @@ class _IntegrationStatusCenterState extends ConsumerState<_IntegrationStatusCent
 }
 
 class _AiTaskTimeline extends ConsumerWidget {
-  const _AiTaskTimeline();
+  final VoidCallback onClose;
+  const _AiTaskTimeline({required this.onClose});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -636,21 +626,34 @@ class _AiTaskTimeline extends ConsumerWidget {
         if (tasks.isEmpty) return const SizedBox.shrink();
 
         return Container(
-          padding: const EdgeInsets.only(top: 12, left: 8, right: 8),
+          padding: const EdgeInsets.only(top: 4, left: 8, right: 8),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                child: Text(
-                  'AI ACTIVITY LOG',
-                  style: TextStyle(
-                    color: OneDarkTheme.textDark,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.1,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    child: Text(
+                      'AI ACTIVITY LOG',
+                      style: TextStyle(
+                        color: OneDarkTheme.textDark,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.1,
+                      ),
+                    ),
                   ),
-                ),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 14, color: OneDarkTheme.textDark),
+                    onPressed: onClose,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    splashRadius: 16,
+                    tooltip: 'Hide Log',
+                  ),
+                ],
               ),
               const SizedBox(height: 6),
               ...tasks.map((task) {
