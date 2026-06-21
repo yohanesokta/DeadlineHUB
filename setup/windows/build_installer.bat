@@ -4,7 +4,7 @@ echo Building Flutter Windows Release...
 echo =======================================================
 REM Navigate to the project root relative to this script directory
 cd /d "%~dp0..\.."
-call flutter build windows --release
+call flutter build windows --release --dart-define-from-file=secrets.json
 
 echo.
 echo =======================================================

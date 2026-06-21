@@ -19,7 +19,7 @@ echo -e "${BLUE}=======================================================${NC}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR/../.."
 
-flutter build macos --release
+flutter build macos --release --dart-define-from-file=secrets.json
 
 APP_NAME="deadlinehub"
 APP_PATH="build/macos/Build/Products/Release/deadlinehub.app"

@@ -19,7 +19,7 @@ echo -e "${BLUE}=======================================================${NC}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR/../.."
 
-flutter build linux --release
+flutter build linux --release --dart-define-from-file=secrets.json
 
 # Variables
 VERSION="1.0.0"
